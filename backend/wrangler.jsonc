@@ -1,0 +1,44 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hono-app",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-02-03",
+  // "compatibility_flags": [
+  //   "nodejs_compat"
+  // ],
+  "vars": {
+    "MY_NAME": "Hono",
+    "GEMINI_API_KEY": "AIzaSyDgCNtokt5KQGemxpkuQRMIO-xiAjDLGtk"
+  },
+  "kv_namespaces": [
+    // {
+    //   "binding": "MY_KV",
+    //   "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    // },
+    {
+      "binding": "MY_KV",
+      "id": "30e6aa934a0d48d2aa3ba535e53c9740"
+    }
+  ],
+  // "r2_buckets": [
+  //   {
+  //     "binding": "MY_BUCKET",
+  //     "bucket_name": "my-bucket"
+  //   }
+  // ],
+  "d1_databases": [
+    {
+      "binding": "MY_DB",
+      "database_name": "hono-app-db",
+      "database_id": "a346fa24-e42d-4fef-8dbc-ba75951fecb3",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  // "ai": {
+  //   "binding": "AI"
+  // },
+  // "observability": {
+  //   "enabled": true,
+  //   "head_sampling_rate": 1
+  // }
+}
