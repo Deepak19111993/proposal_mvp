@@ -45,7 +45,7 @@ export const Home = () => {
     const isSubmitDisabled = loading || !question.trim();
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 max-w-[750px] mx-auto">
             <div className="text-center">
                 <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
                     Proposal <span className="text-indigo-600">Generator</span>
@@ -55,7 +55,7 @@ export const Home = () => {
                 </p>
             </div>
 
-            <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            <div className="bg-white py-6 px-[15px] sm:px-[25px] shadow sm:rounded-lg">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
                         <label htmlFor="question" className="block text-sm font-medium text-gray-700">

@@ -112,7 +112,7 @@ export const Resume = () => {
     return (
         <div className={user?.role === 'SUPER_ADMIN' ? "grid grid-cols-1 lg:grid-cols-5 gap-8 items-start" : "space-y-8"}>
             {user?.role === 'SUPER_ADMIN' && (
-                <div className="lg:col-span-2 bg-white py-6 px-4 shadow sm:rounded-lg sm:px-6 sticky top-4">
+                <div className="lg:col-span-2 bg-white py-6 px-4 shadow sm:rounded-lg sm:px-6 lg:sticky lg:top-4 mb-8 lg:mb-0">
                     <div className="text-center mb-8">
                         <h2 className="text-3xl font-extrabold text-gray-900 border-b pb-4 mb-4">Resume Generator</h2>
                         <p className="text-gray-500">Create a tailored resume in seconds.</p>
@@ -189,16 +189,16 @@ export const Resume = () => {
                                 <li key={resume.id}>
                                     <div className="block hover:bg-gray-50 w-full text-left focus:outline-none cursor-pointer" onClick={() => setSelectedResume(resume)}>
                                         <div className="px-4 py-4 sm:px-6">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium text-indigo-600 truncate">{resume.role}</p>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                                                    <p className="text-sm font-bold text-indigo-600 truncate">{resume.role}</p>
                                                     {user?.role === 'SUPER_ADMIN' ? (
                                                         <div onClick={(e) => e.stopPropagation()}>
                                                             <Select
                                                                 value={resume.domain || ''}
                                                                 onValueChange={(val) => handleUpdateDomain(resume.id, val)}
                                                             >
-                                                                <SelectTrigger className="h-6 w-[110px] text-xs bg-gray-50 border-gray-200">
+                                                                <SelectTrigger className="h-7 w-[110px] text-xs bg-gray-50 border-gray-200">
                                                                     <SelectValue placeholder="Domain" />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
@@ -215,35 +215,31 @@ export const Resume = () => {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="ml-2 flex items-center gap-2">
+                                                <div className="flex items-center gap-2 shrink-0">
                                                     {user?.role === 'SUPER_ADMIN' && (
                                                         <button
                                                             onClick={(e) => handleDeleteClick(e, resume.id)}
-                                                            className="px-2 py-1 text-xs font-semibold rounded bg-red-100 text-red-800 hover:bg-red-200 z-10 relative"
+                                                            className="px-2 py-1 text-xs font-semibold rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors z-10 relative"
                                                         >
                                                             Delete
                                                         </button>
                                                     )}
-                                                    <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    <p className="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
                                                         Ready
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="mt-2 sm:flex sm:justify-between">
-                                                <div className="sm:flex">
-                                                    <p className="flex items-center text-sm text-gray-500">
-                                                        {resume.description.substring(0, 50)}...
-                                                    </p>
-                                                </div>
-                                                <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="font-medium text-gray-900">
-                                                            {new Date(resume.timestamp).getDate()}, {new Date(resume.timestamp).toLocaleString('default', { month: 'long' })}, {new Date(resume.timestamp).getFullYear()}
-                                                        </span>
-                                                        <span className="text-gray-500 text-xs">
-                                                            {new Date(resume.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
+                                            <div className="mt-2 flex flex-col gap-2">
+                                                <p className="text-sm text-gray-500 line-clamp-2">
+                                                    {resume.description}
+                                                </p>
+                                                <div className="flex flex-col items-start gap-0.5">
+                                                    <span className="text-sm font-medium text-gray-900">
+                                                        {new Date(resume.timestamp).getDate()}, {new Date(resume.timestamp).toLocaleString('default', { month: 'long' })}, {new Date(resume.timestamp).getFullYear()}
+                                                    </span>
+                                                    <span className="text-gray-500 text-xs">
+                                                        {new Date(resume.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
