@@ -99,7 +99,7 @@ export const History = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <Skeleton className="h-[1.25rem] w-full max-w-xl" />
+                                                    <Skeleton className="h-[1.25rem] w-full" />
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="inline-flex items-center">
@@ -128,7 +128,7 @@ export const History = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-gray-900 break-words whitespace-normal align-middle">
-                                                    <div className="leading-[1.25rem] max-w-2xl">{truncateWords(item.question, 20)}</div>
+                                                    <div className="leading-[1.25rem]">{truncateWords(item.question, 20)}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm align-middle">
                                                     <div className="inline-flex items-center">

@@ -28,7 +28,7 @@ export const Layout = () => {
                 </div>
             )}
             <nav className="bg-white shadow">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex">
                             <div className="flex-shrink-0 flex items-center">
@@ -73,7 +73,7 @@ export const Layout = () => {
                     </div>
                 </div>
             </nav>
-            <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-[1600px] mx-auto py-12 px-4 sm:px-6 lg:px-8">
                 <Outlet />
             </div>
         </div>

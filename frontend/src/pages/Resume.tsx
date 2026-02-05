@@ -110,9 +110,9 @@ export const Resume = () => {
     };
 
     return (
-        <div className="space-y-8">
+        <div className={user?.role === 'SUPER_ADMIN' ? "grid grid-cols-1 lg:grid-cols-5 gap-8 items-start" : "space-y-8"}>
             {user?.role === 'SUPER_ADMIN' && (
-                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 max-w-2xl mx-auto">
+                <div className="lg:col-span-2 bg-white py-6 px-4 shadow sm:rounded-lg sm:px-6 sticky top-4">
                     <div className="text-center mb-8">
                         <h2 className="text-3xl font-extrabold text-gray-900 border-b pb-4 mb-4">Resume Generator</h2>
                         <p className="text-gray-500">Create a tailored resume in seconds.</p>
@@ -153,7 +153,7 @@ export const Resume = () => {
                 </div>
             )}
 
-            <div className="max-w-4xl mx-auto">
+            <div className={user?.role === 'SUPER_ADMIN' ? "lg:col-span-3" : ""}>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Your Resumes</h3>
                 <div className="bg-white shadow overflow-hidden sm:rounded-md">
                     <ul className="divide-y divide-gray-200">
