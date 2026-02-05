@@ -114,7 +114,7 @@ export const History = () => {
                                     )}
                                 </div>
                                 <div className="text-sm text-gray-900 leading-relaxed italic">
-                                    "{truncateWords(item.question, 15)}"
+                                    "{truncateWords(item.question, 30)}"
                                 </div>
                                 <div className="flex justify-end items-center gap-6 pt-2 border-t border-gray-50">
                                     <Link to={`/history/${item.id}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-900">
@@ -199,7 +199,7 @@ export const History = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-gray-900 break-words whitespace-normal align-middle">
-                                                    <div className="leading-[1.25rem]">{truncateChars(item.question, 100)}</div>
+                                                    <div className="leading-[1.25rem]">{truncateChars(item.question, 250)}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm align-middle">
                                                     <div className="inline-flex items-center">

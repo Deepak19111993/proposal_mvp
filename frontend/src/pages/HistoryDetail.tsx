@@ -104,8 +104,8 @@ export const HistoryDetail = () => {
                             <div className="ml-3">
                                 <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Requirements</h3>
                                 <div className="mt-2 text-sm text-gray-700 leading-relaxed italic">
-                                    <p className="block md:hidden">"{truncateWords(item.question, 20)}"</p>
-                                    <p className="hidden md:block">"{item.question.length > 400 ? item.question.substring(0, 400) + "..." : item.question}"</p>
+                                    <p className="block md:hidden">"{truncateWords(item.question, 40)}"</p>
+                                    <p className="hidden md:block">"{item.question.length > 800 ? item.question.substring(0, 800) + "..." : item.question}"</p>
                                 </div>
                             </div>
                         </div>
