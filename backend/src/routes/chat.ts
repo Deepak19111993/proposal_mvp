@@ -57,14 +57,9 @@ app.post('/', async (c) => {
             .leftJoin(users, eq(resumesTable.userId, users.id));
 
         if (userDomain && userRole !== 'SUPER_ADMIN') {
-            // Strict filter: Must match domain AND be owned by the user
-            // We removed Admin fallback to ensure "User's Own Resume" is used.
-            query = query.where(
-                and(
-                    eq(resumesTable.userId, userId),
-                    eq(resumesTable.domain, userDomain)
-                )
-            ) as any;
+            // Strict filter: Match Domain (Consistency with Visibility)
+            // If user sees a resume on the dashboard (because it matches their domain), they can use it here.
+            query = query.where(eq(resumesTable.domain, userDomain)) as any;
         } else {
             // Default/Admin behavior (permissive)
             query = query.where(
@@ -161,6 +156,8 @@ app.post('/', async (c) => {
                             if (typeof item === 'object' && item !== null) {
                                 // Handle { requirement: "...", match: "..." } pattern
                                 if (item.requirement && item.match) return `- **${item.requirement}**: ${item.match}`;
+                                if (item.requirementName && item.match) return `- **${item.requirementName}**: ${item.match}`;
+                                if (item.requirementName) return `- ${item.requirementName}`; // Handle case with no match value
                                 if (item.skill && item.level) return `- **${item.skill}**: ${item.level}`;
 
                                 // Fallback: Convert first key-value pair to string: "- Key: Value"

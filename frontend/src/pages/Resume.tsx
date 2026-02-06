@@ -161,24 +161,23 @@ export const Resume = () => {
                             [1, 2, 3].map((i) => (
                                 <li key={i}>
                                     <div className="px-4 py-4 sm:px-6">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-start justify-between gap-2">
                                             <div className="flex items-center gap-2">
-                                                <Skeleton className="h-4 w-32" />
-                                                <Skeleton className="h-5 w-20 rounded-full" />
+                                                <Skeleton className="h-5 w-40" /> {/* Role */}
+                                                <Skeleton className="h-5 w-16 rounded-full" /> {/* Domain */}
                                             </div>
-                                            <div className="ml-2 flex items-center gap-2">
-                                                <Skeleton className="h-5 w-16 rounded-full" />
+                                            <div className="flex items-center gap-2">
+                                                <Skeleton className="h-5 w-16 rounded-full" /> {/* Status */}
                                             </div>
                                         </div>
-                                        <div className="mt-2 sm:flex sm:justify-between">
-                                            <div className="sm:flex">
-                                                <Skeleton className="h-4 w-64" />
+                                        <div className="mt-4 flex flex-col gap-3">
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-4 w-full" /> {/* Description line 1 */}
+                                                <Skeleton className="h-4 w-3/4" /> {/* Description line 2 */}
                                             </div>
-                                            <div className="mt-2 flex items-center sm:mt-0">
-                                                <div className="flex flex-col items-end">
-                                                    <Skeleton className="h-4 w-28" />
-                                                    <Skeleton className="h-3 w-16 mt-1" />
-                                                </div>
+                                            <div className="flex flex-col gap-1 mt-1">
+                                                <Skeleton className="h-4 w-32" /> {/* Date */}
+                                                <Skeleton className="h-3 w-20" /> {/* Time */}
                                             </div>
                                         </div>
                                     </div>
