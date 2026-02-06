@@ -13,7 +13,8 @@ export const register = async (email: string, password: string, name: string) =>
     const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ email, password, name }), // Register currently doesn't support domain, keeping as is or adding if needed. Re-reading plan: not specified for register, only admin creation.
+
     });
     if (!response.ok) {
         const data = await response.json();
@@ -117,11 +118,11 @@ export const deleteResume = async (id: string) => {
     if (!response.ok) throw new Error('Failed to delete resume');
     return response.json();
 }
-export const createUser = async (email: string, password: string, name: string, role: string) => {
+export const createUser = async (email: string, password: string, name: string, role: string, domain?: string) => {
     const response = await fetch(`${API_URL}/users`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ email, password, name, role }),
+        body: JSON.stringify({ email, password, name, role, domain }),
     });
     if (!response.ok) {
         const data = await response.json();
@@ -147,7 +148,7 @@ export const deleteUser = async (id: string) => {
     return response.json();
 }
 
-export const updateUser = async (id: string, data: { password?: string, email?: string, name?: string, role?: string }) => {
+export const updateUser = async (id: string, data: { password?: string, email?: string, name?: string, role?: string, domain?: string }) => {
     const response = await fetch(`${API_URL}/users/${id}`, {
         method: 'PATCH',
         headers: getHeaders(),

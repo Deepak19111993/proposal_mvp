@@ -24,33 +24,66 @@ app.post('/', async (c) => {
     let answer = "No answer found or error occurred.";
     let fitscore = 0;
 
-    const { or, desc } = await import('drizzle-orm')
+    const { or, desc, and } = await import('drizzle-orm')
     const { users } = await import('../db/schema')
 
     try {
-        // 1. Fetch user's resumes AND Admin resumes for context
-        const resumes = await db.select({
+        // 1. Fetch user's resumes AND Admin resumes for context (Filtered by Domain)
+        const userDomain = c.get('domain');
+        const userRole = c.get('role');
+
+        const conditions = [eq(resumesTable.userId, userId)];
+        if (userRole === 'SUPER_ADMIN') {
+            conditions.push(eq(users.role, 'SUPER_ADMIN')); // Admin sees admin resumes too (or just their own? keeping permissive for admin)
+        } else if (userDomain) {
+            // STRICT: Only resumes matching the domain. 
+            // We search for resumes that belong to the user AND match the domain, 
+            // OR published/global resumes (if we had that concept) that match the domain.
+            // For now, let's assume we just want the user's resumes that match the domain.
+            // But wait, the previous logic allowed "eq(users.role, 'SUPER_ADMIN')". 
+            // The requirement says: "if has same domain resume to that user then will create proposal".
+            // Implementation: Filter finding resumes where (userId = me OR role = admin) AND domain = myDomain.
+            conditions.push(eq(users.role, 'SUPER_ADMIN'));
+        }
+
+        let query = db.select({
             id: resumesTable.id,
             role: resumesTable.role,
             content: resumesTable.content,
-            userId: resumesTable.userId
+            userId: resumesTable.userId,
+            domain: resumesTable.domain
         })
             .from(resumesTable)
-            .leftJoin(users, eq(resumesTable.userId, users.id))
-            .where(
+            .leftJoin(users, eq(resumesTable.userId, users.id));
+
+        if (userDomain && userRole !== 'SUPER_ADMIN') {
+            // Strict filter: Must match domain AND be owned by the user
+            // We removed Admin fallback to ensure "User's Own Resume" is used.
+            query = query.where(
+                and(
+                    eq(resumesTable.userId, userId),
+                    eq(resumesTable.domain, userDomain)
+                )
+            ) as any;
+        } else {
+            // Default/Admin behavior (permissive)
+            query = query.where(
                 or(
                     eq(resumesTable.userId, userId),
                     eq(users.role, 'SUPER_ADMIN')
                 )
-            )
-            .all();
+            ) as any;
+        }
+
+        const resumes = await query.all();
 
         // 1. Hard check: If no resumes at all, reject immediately
         if (resumes.length === 0) {
+            const domainMsg = userDomain ? ` for the domain **${userDomain}**` : '';
             return c.json({
                 id: crypto.randomUUID(),
                 question,
-                answer: "### ❌ No Resumes Found\nYou haven't generated any resumes yet. Please visit the **Resume Generator** to create a professional profile (e.g., SEO Specialist) before generating a proposal.",
+                answer: `### ❌ No Resumes Found${domainMsg}\nYou haven't generated any resumes yet${domainMsg}. Please visit the **Resume Generator** to create a professional profile${domainMsg} before generating a proposal.`,
                 fitscore: 0,
                 timestamp: new Date().toISOString(),
                 userId
@@ -58,9 +91,16 @@ app.post('/', async (c) => {
         }
 
         // 2. Format resumes for prompt
-        const resumesContext = resumes.map((r: any) => `ROLE: ${r.role}\nCONTENT: ${r.content}`).join('\n\n---\n\n');
+        const resumesContext = resumes.map((r: any) => `ROLE: ${r.role}\nDOMAIN: ${r.domain}\nCONTENT: ${r.content}`).join('\n\n---\n\n');
 
-        const systemPrompt = `You are an ELITE Recruitment Specialist and Proposal Architect.
+        // Dynamic Persona based on Domain
+        let expertPersona = "ELITE Recruitment Specialist and Proposal Architect";
+        if (userDomain === 'GenAI') expertPersona = "World-Class Generative AI Solutions Architect & Proposal Expert";
+        else if (userDomain === 'Fullstack') expertPersona = "Senior Fullstack Engineering Lead & Technical Proposal Strategist";
+        else if (userDomain === 'DevOps') expertPersona = "Principal DevOps Engineer & Infrastructure Consultant";
+        else if (userDomain === 'AI/ML') expertPersona = "Chief AI/ML Scientist & Algorithm Strategist";
+
+        const systemPrompt = `You are an ${expertPersona}.
         Your ABSOLUTE PRIORITY is to verify if requested Job Requirements match the User's Professional Background (Resumes).
         
         ### USER'S RESUMES:
@@ -70,10 +110,11 @@ app.post('/', async (c) => {
         ${question}
         
         ### EVALUATION PROTOCOL:
-        1. **ELIGIBILITY CHECK**: Verify if the provided resumes contain skills or experience relevant to the "TARGET JOB REQUIREMENTS". 
-           - **Transferable Skills**: Look for keyword matches (e.g., if Job asks for "SEO" and Resume mentions "Optimization", "Ranking", or "Content Strategy", count it as a match).
-           - **Role Overlap**: A "WordPress Developer" is often a valid match for "Web Developer" or "SEO" roles if the content supports it.
-           - Only trigger a REJECTION if the resume is **COMPLETELY UNRELATED** (e.g., seeking a Medical Doctor but user is a Graphic Designer).
+        1. **ELIGIBILITY CHECK**: Verify if the requested Job Requirements strictly align with the User's Domain (**${userDomain}**).
+           - **STRICT DOMAIN MATCH**: The job/project MUST be primarily about **${userDomain}**.
+           - **Mismatch Example**: If User Domain is "AI/ML" and Job is "React/Frontend", this is a MISMATCH. Reject it.
+           - **Mismatch Example**: If User Domain is "Fullstack" and Job is "Data Science", this is a MISMATCH. Reject it.
+           - Only accept if there is a clear, direct relevance to **${userDomain}**.
 
         2. **IF REJECTED (No valid match)**:
            - Set "fitscore" to 0.
@@ -88,7 +129,7 @@ app.post('/', async (c) => {
 
         Output MUST be a valid JSON object with keys: fitscore, proposal, requirementMatrix, clarifyingQuestions.`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-robotics-er-1.5-preview:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -113,12 +154,47 @@ app.post('/', async (c) => {
 
                 const matrix = parsed.requirementMatrix;
                 if (matrix && (typeof matrix === 'string' && matrix.trim() || Array.isArray(matrix))) {
-                    chunks.push('## Requirement Matrix\n' + (Array.isArray(matrix) ? matrix.join('\n') : matrix));
+                    let formattedMatrix = '';
+                    if (Array.isArray(matrix)) {
+                        formattedMatrix = matrix.map((item: any) => {
+                            if (typeof item === 'string') return item;
+                            if (typeof item === 'object' && item !== null) {
+                                // Handle { requirement: "...", match: "..." } pattern
+                                if (item.requirement && item.match) return `- **${item.requirement}**: ${item.match}`;
+                                if (item.skill && item.level) return `- **${item.skill}**: ${item.level}`;
+
+                                // Fallback: Convert first key-value pair to string: "- Key: Value"
+                                const entries = Object.entries(item);
+                                if (entries.length > 0) {
+                                    return `- **${entries[0][0]}**: ${entries[0][1]}`;
+                                }
+                            }
+                            return JSON.stringify(item);
+                        }).join('\n');
+                    } else {
+                        formattedMatrix = matrix;
+                    }
+                    chunks.push('## Requirement Matrix\n' + formattedMatrix);
                 }
 
                 const questions = parsed.clarifyingQuestions;
                 if (questions && (typeof questions === 'string' && questions.trim() || Array.isArray(questions))) {
-                    chunks.push('## Clarifying Questions\n' + (Array.isArray(questions) ? questions.map((q: string) => `- ${q}`).join('\n') : questions));
+                    let formattedQuestions = '';
+                    if (Array.isArray(questions)) {
+                        formattedQuestions = questions.map((q: any) => {
+                            if (typeof q === 'string') return `- ${q}`;
+                            if (typeof q === 'object' && q !== null) {
+                                // Handle { question: "...", context: "..." } or simple key-value
+                                if (q.question) return `- ${q.question}`;
+                                const entries = Object.entries(q);
+                                if (entries.length > 0) return `- ${entries[0][1]}`;
+                            }
+                            return `- ${JSON.stringify(q)}`;
+                        }).join('\n');
+                    } else {
+                        formattedQuestions = questions;
+                    }
+                    chunks.push('## Clarifying Questions\n' + formattedQuestions);
                 }
 
                 answer = chunks.join('\n\n');

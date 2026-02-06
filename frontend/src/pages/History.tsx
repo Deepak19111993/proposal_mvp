@@ -4,11 +4,23 @@ import { useLoading } from '../context/LoadingContext';
 import { Link } from 'react-router-dom';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import { Skeleton } from '../components/ui/Skeleton';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "../components/ui/alert-dialog"
 
 export const History = () => {
     const [history, setHistory] = useState<any[]>([]);
     const [hasLoaded, setHasLoaded] = useState(false);
     const { startLoading, stopLoading, loading } = useLoading();
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
     useEffect(() => {
         startLoading();
@@ -21,18 +33,24 @@ export const History = () => {
             });
     }, []);
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this proposal?')) {
-            startLoading();
-            try {
-                await deleteHistory(id);
-                setHistory(history.filter(item => item.id !== id));
-            } catch (error) {
-                console.error("Failed to delete history item", error);
-                alert("Failed to delete item.");
-            }
-            stopLoading();
+    const handleDeleteClick = (id: string) => {
+        setDeleteId(id);
+        setIsDeleteOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+        startLoading();
+        try {
+            await deleteHistory(deleteId);
+            setHistory(history.filter(item => item.id !== deleteId));
+        } catch (error) {
+            console.error("Failed to delete history item", error);
+            // alert("Failed to delete item."); // Replace with toast later if needed
         }
+        stopLoading();
+        setIsDeleteOpen(false);
+        setDeleteId(null);
     };
 
     const getScoreColor = (score: number) => {
@@ -121,7 +139,7 @@ export const History = () => {
                                         View Proposal
                                     </Link>
                                     <button
-                                        onClick={() => handleDelete(item.id)}
+                                        onClick={() => handleDeleteClick(item.id)}
                                         className="text-red-600 hover:text-red-900 p-1"
                                         title="Delete"
                                     >
@@ -218,7 +236,7 @@ export const History = () => {
                                                             View
                                                         </Link>
                                                         <button
-                                                            onClick={() => handleDelete(item.id)}
+                                                            onClick={() => handleDeleteClick(item.id)}
                                                             className="text-red-600 hover:text-red-900 focus:outline-none"
                                                             title="Delete"
                                                         >
@@ -242,6 +260,23 @@ export const History = () => {
                     </div>
                 </div>
             </div>
+
+            <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Proposal</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this proposal? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 focus:ring-red-600">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

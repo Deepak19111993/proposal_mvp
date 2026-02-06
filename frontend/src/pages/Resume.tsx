@@ -255,7 +255,7 @@ export const Resume = () => {
             </div>
 
             <Dialog open={!!selectedResume} onOpenChange={(open) => !open && setSelectedResume(null)}>
-                <DialogContent className="max-w-4xl h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-5xl! h-[90vh] overflow-y-auto rounded-lg">
                     <DialogHeader>
                         <DialogTitle>Resume for {selectedResume?.role}</DialogTitle>
                         <DialogDescription>

@@ -39,13 +39,14 @@ export const AdminUsers = () => {
     const [newUserPassword, setNewUserPassword] = useState('');
     const [newUserName, setNewUserName] = useState('');
     const [newUserRole, setNewUserRole] = useState('USER');
+    const [newUserDomain, setNewUserDomain] = useState('');
     const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
 
     // Update Password/User State
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [updateUserId, setUpdateUserId] = useState('');
-    const [updateData, setUpdateData] = useState({ email: '', role: '', password: '', name: '' });
-    const [originalUpdateData, setOriginalUpdateData] = useState({ email: '', role: '', name: '' });
+    const [updateData, setUpdateData] = useState({ email: '', role: '', password: '', name: '', domain: '' });
+    const [originalUpdateData, setOriginalUpdateData] = useState({ email: '', role: '', name: '', domain: '' });
     const [currentEditUserPassword, setCurrentEditUserPassword] = useState('');
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
@@ -102,12 +103,13 @@ export const AdminUsers = () => {
         e.preventDefault();
         startLoading();
         try {
-            await createUser(newUserEmail, newUserPassword, newUserName, newUserRole);
+            await createUser(newUserEmail, newUserPassword, newUserName, newUserRole, newUserDomain || undefined);
             setIsCreateOpen(false);
             setNewUserEmail('');
             setNewUserPassword('');
             setNewUserName('');
             setNewUserRole('USER');
+            setNewUserDomain('');
             setShowCreatePassword(false);
             loadUsers(); // Reload list
         } catch (error: any) {
@@ -122,13 +124,15 @@ export const AdminUsers = () => {
             email: user.email,
             role: user.role,
             name: user.name,
-            password: '' // Don't prefill password
+            domain: user.domain || '',
+            password: ''
         };
         setUpdateData(data);
         setOriginalUpdateData({
             email: user.email,
             role: user.role,
-            name: user.name
+            name: user.name,
+            domain: user.domain || ''
         });
         setCurrentEditUserPassword(user.password || '');
         setShowCurrentPassword(false);
@@ -143,7 +147,8 @@ export const AdminUsers = () => {
             const payload: any = {
                 email: updateData.email,
                 role: updateData.role,
-                name: updateData.name
+                name: updateData.name,
+                domain: updateData.domain
             };
             if (updateData.password) payload.password = updateData.password;
 
@@ -161,6 +166,7 @@ export const AdminUsers = () => {
         updateData.name !== originalUpdateData.name ||
         updateData.email !== originalUpdateData.email ||
         updateData.role !== originalUpdateData.role ||
+        updateData.domain !== originalUpdateData.domain ||
         updateData.password !== '';
 
     return (
@@ -205,6 +211,11 @@ export const AdminUsers = () => {
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'}`}>
                                             {user.role}
                                         </span>
+                                        {user.domain && (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                {user.domain}
+                                            </span>
+                                        )}
                                         <div className="flex items-center text-xs text-gray-500 space-x-1">
                                             <span className="font-mono bg-gray-100 px-1 rounded">
                                                 {visiblePasswords[user.id] ? user.password : '••••••••'}
@@ -308,6 +319,20 @@ export const AdminUsers = () => {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className='space-y-1'>
+                            <label className="block text-sm font-medium text-gray-700">Domain (Optional)</label>
+                            <Select value={newUserDomain} onValueChange={setNewUserDomain}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select domain" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Fullstack">Fullstack</SelectItem>
+                                    <SelectItem value="GenAI">GenAI</SelectItem>
+                                    <SelectItem value="DevOps">DevOps</SelectItem>
+                                    <SelectItem value="AI/ML">AI/ML</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             Create User
                         </button>
@@ -341,6 +366,20 @@ export const AdminUsers = () => {
                                 <SelectContent>
                                     <SelectItem value="USER">User</SelectItem>
                                     <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className='space-y-1'>
+                            <label className="block text-sm font-medium text-gray-700">Domain (Optional)</label>
+                            <Select value={updateData.domain} onValueChange={(value: string) => setUpdateData({ ...updateData, domain: value })}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select domain" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Fullstack">Fullstack</SelectItem>
+                                    <SelectItem value="GenAI">GenAI</SelectItem>
+                                    <SelectItem value="DevOps">DevOps</SelectItem>
+                                    <SelectItem value="AI/ML">AI/ML</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

@@ -44,6 +44,7 @@ app.use('/api/*', async (c, next) => {
 
   c.set('userId', session.userId);
   c.set('role', user.role);
+  if (user.domain) c.set('domain', user.domain);
   await next();
 });
 
@@ -82,7 +83,7 @@ app.post('/api/users', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
-  const { email, password, name, role: newUserRole } = await c.req.json();
+  const { email, password, name, role: newUserRole, domain } = await c.req.json();
   if (!email || !password || !name) return c.json({ error: 'Missing fields' }, 400);
 
   const db = drizzle(c.env.MY_DB);
@@ -97,7 +98,8 @@ app.post('/api/users', async (c) => {
       email,
       password,
       name,
-      role: newUserRole || 'USER'
+      role: newUserRole || 'USER',
+      domain: domain || null
     });
   } catch (e: any) {
     return c.json({ error: e.message }, 500);
@@ -117,6 +119,7 @@ app.get('/api/users', async (c) => {
     email: users.email,
     name: users.name,
     role: users.role,
+    domain: users.domain,
     password: users.password // Added password field
   }).from(users).all();
   return c.json(allUsers);
@@ -156,13 +159,14 @@ app.patch('/api/users/:id', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
   const id = c.req.param('id');
-  const { password, email, name, role: userRole } = await c.req.json();
+  const { password, email, name, role: userRole, domain } = await c.req.json();
 
   const updateData: any = {};
   if (password) updateData.password = password;
   if (email) updateData.email = email;
   if (name) updateData.name = name;
   if (userRole) updateData.role = userRole;
+  if (domain !== undefined) updateData.domain = domain;
 
   if (Object.keys(updateData).length === 0) {
     return c.json({ error: 'No fields to update' }, 400);
@@ -195,7 +199,7 @@ app.post('/api/login', async (c) => {
     userId: user.id
   });
 
-  return c.json({ token, email: user.email, name: user.name, role: user.role });
+  return c.json({ token, email: user.email, name: user.name, role: user.role, domain: user.domain });
 });
 
 // Mount Routes

@@ -6,6 +6,7 @@ export const users = sqliteTable('users', {
     password: text('password').notNull(),
     name: text('name').notNull(),
     role: text('role').notNull().default('USER'),
+    domain: text('domain'), // Domain for filtering resumes
     createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
 

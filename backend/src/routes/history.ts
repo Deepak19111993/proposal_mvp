@@ -42,15 +42,19 @@ app.delete('/:id', async (c) => {
     const db = drizzle(c.env.MY_DB);
     const role = c.get('role');
 
-    if (role !== 'SUPER_ADMIN') {
+    // Fetch the history item to check ownership
+    const item = await db.select().from(history).where(eq(history.id, id)).get();
+
+    if (!item) {
+        return c.json({ error: 'History not found' }, 404);
+    }
+
+    // Allow if Super Admin OR if it's the user's own item
+    if (role !== 'SUPER_ADMIN' && item.userId !== userId) {
         return c.json({ error: 'Forbidden' }, 403);
     }
 
     try {
-        // Delete only works if ID matches. In a real app we should also check userId in WHERE clause
-        // or verify ownership first. Given schema, ID is primary key.
-        // For safety, let's verify ownership first or trust UUID non-collision + app logic.
-        // Let's keep it simple: DELETE FROM history WHERE id = ?
         await db.delete(history).where(eq(history.id, id));
         return c.json({ success: true });
     } catch (e: any) {

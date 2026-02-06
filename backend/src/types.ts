@@ -8,4 +8,5 @@ export type Bindings = {
 export type Variables = {
     userId: string
     role: string
+    domain?: string
 }
