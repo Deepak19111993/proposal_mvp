@@ -1,17 +1,40 @@
 import { Hono } from 'hono'
+// Force Vercel Update 1
 import { cors } from 'hono/cors'
-import { drizzle } from 'drizzle-orm/d1'
+import { drizzle } from 'drizzle-orm/neon-http'
+import { neon } from '@neondatabase/serverless'
 import { eq } from 'drizzle-orm'
-import { users, sessions, resumes, history } from './db/schema'
-import { Bindings, Variables } from './types'
-import historyRouter from './routes/history'
-import resumeRouter from './routes/resume'
-import chat from './routes/chat'
+import { users, sessions, resumes, history } from './db/schema.js'
+import { Bindings, Variables } from './types.js'
+import historyRouter from './routes/history.js'
+import resumeRouter from './routes/resume.js'
+import chat from './routes/chat.js'
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>()
 
 // Enable CORS
 app.use('/*', cors())
+
+// Health Check / Server Status
+app.get('/', (c) => {
+  const envStatus = (c.env.GEMINI_MODEL || process.env.GEMINI_MODEL) ? 'configured' : 'missing-env';
+  return c.json({
+    status: 'ok',
+    message: 'Hono Backend is running',
+    timestamp: new Date().toISOString(),
+    env: envStatus
+  })
+})
+
+app.get('/api/debug', (c) => {
+  const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+  return c.json({
+    hasDatabaseUrl: !!dbUrl,
+    databaseUrlStart: dbUrl ? dbUrl.substring(0, 10) + '...' : 'MISSING',
+    envKeys: Object.keys(c.env || {}),
+    processEnvKeys: Object.keys(process.env || {})
+  });
+});
 
 // Auth Middleware
 app.use('/api/*', async (c, next) => {
@@ -26,17 +49,22 @@ app.use('/api/*', async (c, next) => {
   }
 
   const token = authHeader.split(' ')[1];
-  const db = drizzle(c.env.MY_DB);
+  const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+  const sql = neon(dbUrl);
+  const db = drizzle(sql);
 
   // Find session
-  const session = await db.select().from(sessions).where(eq(sessions.id, token)).get();
+  const sessionResult = await db.select().from(sessions).where(eq(sessions.id, token));
+  const session = sessionResult[0];
 
   if (!session) {
     return c.json({ error: 'Invalid token' }, 401);
   }
 
   // Get user role
-  const user = await db.select().from(users).where(eq(users.id, session.userId)).get();
+  const userResult = await db.select().from(users).where(eq(users.id, session.userId));
+  const user = userResult[0];
 
   if (!user) {
     return c.json({ error: 'User not found' }, 401);
@@ -50,8 +78,11 @@ app.use('/api/*', async (c, next) => {
 
 // Setup Initial Super Admin
 app.post('/api/setup', async (c) => {
-  const db = drizzle(c.env.MY_DB);
-  const userCount = await db.select({ count: users.id }).from(users).all();
+  const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+  const sql = neon(dbUrl);
+  const db = drizzle(sql);
+  const userCount = await db.select({ count: users.id }).from(users);
 
   if (userCount.length > 0) {
     return c.json({ error: 'Setup already completed' }, 403);
@@ -86,8 +117,12 @@ app.post('/api/users', async (c) => {
   const { email, password, name, role: newUserRole, domain } = await c.req.json();
   if (!email || !password || !name) return c.json({ error: 'Missing fields' }, 400);
 
-  const db = drizzle(c.env.MY_DB);
-  const existingUser = await db.select().from(users).where(eq(users.email, email)).get();
+  const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+  const sql = neon(dbUrl);
+  const db = drizzle(sql);
+  const existingUserResult = await db.select().from(users).where(eq(users.email, email));
+  const existingUser = existingUserResult[0];
 
   if (existingUser) return c.json({ error: 'User already exists' }, 409);
 
@@ -113,7 +148,10 @@ app.get('/api/users', async (c) => {
   if (role !== 'SUPER_ADMIN') {
     return c.json({ error: 'Forbidden' }, 403);
   }
-  const db = drizzle(c.env.MY_DB);
+  const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+  const sql = neon(dbUrl);
+  const db = drizzle(sql);
   const allUsers = await db.select({
     id: users.id,
     email: users.email,
@@ -121,7 +159,7 @@ app.get('/api/users', async (c) => {
     role: users.role,
     domain: users.domain,
     password: users.password // Added password field
-  }).from(users).all();
+  }).from(users);
   return c.json(allUsers);
 });
 
@@ -132,7 +170,10 @@ app.delete('/api/users/:id', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
   const id = c.req.param('id');
-  const db = drizzle(c.env.MY_DB);
+  const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+  const sql = neon(dbUrl);
+  const db = drizzle(sql);
 
   // Prevent deleting self? Maybe.
   // const currentUserId = c.get('userId');
@@ -172,7 +213,10 @@ app.patch('/api/users/:id', async (c) => {
     return c.json({ error: 'No fields to update' }, 400);
   }
 
-  const db = drizzle(c.env.MY_DB);
+  const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+  const sql = neon(dbUrl);
+  const db = drizzle(sql);
   try {
     await db.update(users).set(updateData).where(eq(users.id, id));
     return c.json({ success: true });
@@ -184,9 +228,13 @@ app.patch('/api/users/:id', async (c) => {
 // Login
 app.post('/api/login', async (c) => {
   const { email, password } = await c.req.json();
-  const db = drizzle(c.env.MY_DB);
+  const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+  if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+  const sql = neon(dbUrl);
+  const db = drizzle(sql);
 
-  const user = await db.select().from(users).where(eq(users.email, email)).get();
+  const userResult = await db.select().from(users).where(eq(users.email, email));
+  const user = userResult[0];
 
   if (!user) return c.json({ error: 'Invalid credentials' }, 401);
 

@@ -1,10 +1,19 @@
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://hono-app.deepak-kushwaha.workers.dev/api';
+const getBaseUrl = () => {
+    let url = import.meta.env.VITE_API_URL || import.meta.env.REACT_APP_API_URL || '';
+    if (url.endsWith('/')) {
+        url = url.slice(0, -1);
+    }
+    return url;
+};
+
+const API_URL = getBaseUrl();
 
 const getHeaders = () => {
     const token = localStorage.getItem('token');
     return {
         'Content-Type': 'application/json',
+
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 };

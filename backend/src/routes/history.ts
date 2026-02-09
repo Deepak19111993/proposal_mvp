@@ -1,20 +1,23 @@
 import { Hono } from 'hono'
-import { drizzle } from 'drizzle-orm/d1'
+import { drizzle } from 'drizzle-orm/neon-http'
+import { neon } from '@neondatabase/serverless'
 import { eq, desc } from 'drizzle-orm'
-import { history } from '../db/schema'
-import { Bindings, Variables } from '../types'
+import { history } from '../db/schema.js'
+import { Bindings, Variables } from '../types.js'
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>()
 
 app.get('/', async (c) => {
     const userId = c.get('userId');
-    const db = drizzle(c.env.MY_DB);
+    const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+    const sql = neon(dbUrl);
+    const db = drizzle(sql);
 
     // List only for this user
     const historyData = await db.select().from(history)
         .where(eq(history.userId, userId))
-        .orderBy(desc(history.timestamp))
-        .all();
+        .orderBy(desc(history.timestamp));
 
     return c.json(historyData);
 })
@@ -22,12 +25,15 @@ app.get('/', async (c) => {
 app.get('/:id', async (c) => {
     const userId = c.get('userId');
     const id = c.req.param('id');
-    const db = drizzle(c.env.MY_DB);
+    const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+    const sql = neon(dbUrl);
+    const db = drizzle(sql);
 
     // Strict check ensures users can only access their own history
-    const data = await db.select().from(history)
-        .where(eq(history.id, id))
-        .get();
+    const dataResult = await db.select().from(history)
+        .where(eq(history.id, id));
+    const data = dataResult[0];
 
     if (!data || data.userId !== userId) {
         return c.json({ error: 'History not found' }, 404);
@@ -39,11 +45,15 @@ app.get('/:id', async (c) => {
 app.delete('/:id', async (c) => {
     const userId = c.get('userId');
     const id = c.req.param('id');
-    const db = drizzle(c.env.MY_DB);
+    const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+    const sql = neon(dbUrl);
+    const db = drizzle(sql);
     const role = c.get('role');
 
     // Fetch the history item to check ownership
-    const item = await db.select().from(history).where(eq(history.id, id)).get();
+    const itemResult = await db.select().from(history).where(eq(history.id, id));
+    const item = itemResult[0];
 
     if (!item) {
         return c.json({ error: 'History not found' }, 404);

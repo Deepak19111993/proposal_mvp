@@ -1,8 +1,9 @@
 export type Bindings = {
     MY_NAME: string
     MY_KV: any
-    MY_DB: D1Database
+    DATABASE_URL: string
     GEMINI_API_KEY: string
+    GEMINI_MODEL?: string
 }
 
 export type Variables = {

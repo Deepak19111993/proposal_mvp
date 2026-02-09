@@ -1,8 +1,9 @@
 import { Hono } from 'hono'
-import { drizzle } from 'drizzle-orm/d1'
+import { drizzle } from 'drizzle-orm/neon-http'
+import { neon } from '@neondatabase/serverless'
 import { eq, desc, or } from 'drizzle-orm'
-import { resumes, users } from '../db/schema'
-import { Bindings, Variables } from '../types'
+import { resumes, users } from '../db/schema.js'
+import { Bindings, Variables } from '../types.js'
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>()
 
@@ -10,7 +11,8 @@ const app = new Hono<{ Bindings: Bindings, Variables: Variables }>()
 app.post('/resume/generate', async (c) => {
     const userId = c.get('userId');
     const { role, description, domain } = await c.req.json();
-    const apiKey = c.env.GEMINI_API_KEY;
+    const apiKey = c.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    const model = c.env.GEMINI_MODEL || process.env.GEMINI_MODEL || "gemini-1.5-flash";
     const userRole = c.get('role');
 
     // if (userRole !== 'SUPER_ADMIN') {
@@ -42,7 +44,7 @@ app.post('/resume/generate', async (c) => {
             Start directly with the "SUMMARY" or "PROFESSIONAL SUMMARY" section.
             Do not include any preambles like "Here is your resume", just give the markdown content.`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-robotics-er-1.5-preview:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -61,7 +63,10 @@ app.post('/resume/generate', async (c) => {
     }
 
     const id = crypto.randomUUID();
-    const db = drizzle(c.env.MY_DB);
+    const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+    const sql = neon(dbUrl);
+    const db = drizzle(sql);
 
     const resumeItem = { id, role, description, domain: targetDomain, content: resumeContent, userId };
 
@@ -79,7 +84,10 @@ app.patch('/resume/:id', async (c) => {
     const role = c.get('role');
     const id = c.req.param('id');
     const { domain } = await c.req.json();
-    const db = drizzle(c.env.MY_DB);
+    const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+    const sql = neon(dbUrl);
+    const db = drizzle(sql);
 
     if (role !== 'SUPER_ADMIN') {
         return c.json({ error: 'Forbidden' }, 403);
@@ -95,7 +103,10 @@ app.patch('/resume/:id', async (c) => {
 
 app.get('/resumes', async (c) => {
     const userId = c.get('userId');
-    const db = drizzle(c.env.MY_DB);
+    const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+    const sql = neon(dbUrl);
+    const db = drizzle(sql);
 
     let query = db.select({
         id: resumes.id,
@@ -133,7 +144,7 @@ app.get('/resumes', async (c) => {
         query = query.where(or(...conditions)) as any;
     }
 
-    const result = await query.orderBy(desc(resumes.timestamp)).all();
+    const result = await query.orderBy(desc(resumes.timestamp));
 
     return c.json(result);
 });
@@ -141,7 +152,10 @@ app.get('/resumes', async (c) => {
 app.delete('/resume/:id', async (c) => {
     const role = c.get('role');
     const id = c.req.param('id');
-    const db = drizzle(c.env.MY_DB);
+    const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+    const sql = neon(dbUrl);
+    const db = drizzle(sql);
 
     if (role !== 'SUPER_ADMIN') {
         return c.json({ error: 'Forbidden' }, 403);

@@ -1,8 +1,9 @@
 import { Hono } from 'hono'
-import { drizzle } from 'drizzle-orm/d1'
+import { drizzle } from 'drizzle-orm/neon-http'
+import { neon } from '@neondatabase/serverless'
 import { eq } from 'drizzle-orm'
-import { resumes as resumesTable, history } from '../db/schema'
-import { Bindings, Variables } from '../types'
+import { resumes as resumesTable, history } from '../db/schema.js'
+import { Bindings, Variables } from '../types.js'
 
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>()
@@ -12,8 +13,12 @@ app.post('/', async (c) => {
     const body = await c.req.json()
     let question = body.question as string
 
-    const apiKey = c.env.GEMINI_API_KEY
-    const db = drizzle(c.env.MY_DB);
+    const apiKey = c.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY
+    const model = c.env.GEMINI_MODEL || process.env.GEMINI_MODEL || "gemini-1.5-flash"; // Default to flash model if not specified, verify model name validity
+    const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+    const sql = neon(dbUrl);
+    const db = drizzle(sql);
 
     if (!question) {
         return c.json({ error: 'Question is required' }, 400)
@@ -70,7 +75,7 @@ app.post('/', async (c) => {
             ) as any;
         }
 
-        const resumes = await query.all();
+        const resumes = await query;
 
         // 1. Hard check: If no resumes at all, reject immediately
         if (resumes.length === 0) {
@@ -124,7 +129,7 @@ app.post('/', async (c) => {
 
         Output MUST be a valid JSON object with keys: fitscore, proposal, requirementMatrix, clarifyingQuestions.`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-robotics-er-1.5-preview:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

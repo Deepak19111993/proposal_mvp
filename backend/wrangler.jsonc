@@ -8,7 +8,9 @@
   // ],
   "vars": {
     "MY_NAME": "Hono",
-    "GEMINI_API_KEY": "AIzaSyDXcmkvCWVG7tA-Y_AW81Ekpoux4H63VWI"
+    "GEMINI_API_KEY": "AIzaSyAI-_OM8JKLvFZpAUDCJkfzPVePf3ZOhxo",
+    "GEMINI_MODEL": "gemini-robotics-er-1.5-preview",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_K3c9EobpVLdA@ep-dark-waterfall-aizjvr18-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
   },
   "kv_namespaces": [
     // {
@@ -26,14 +28,14 @@
   //     "bucket_name": "my-bucket"
   //   }
   // ],
-  "d1_databases": [
-    {
-      "binding": "MY_DB",
-      "database_name": "hono-app-db",
-      "database_id": "a346fa24-e42d-4fef-8dbc-ba75951fecb3",
-      "migrations_dir": "drizzle"
-    }
-  ],
+  // "d1_databases": [
+  //   {
+  //     "binding": "MY_DB",
+  //     "database_name": "hono-app-db",
+  //     "database_id": "a346fa24-e42d-4fef-8dbc-ba75951fecb3",
+  //     "migrations_dir": "drizzle"
+  //   }
+  // ],
   // "ai": {
   //   "binding": "AI"
   // },
