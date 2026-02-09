@@ -55,6 +55,8 @@ export const generateResume = async (role: string, description: string, domain?:
     return response.json();
 }
 
+
+
 export const updateResume = async (id: string, domain: string) => {
     const response = await fetch(`${API_URL}/resume/${id}`, {
         method: 'PATCH',
@@ -75,7 +77,7 @@ export const getResumes = async () => {
 
 export const askGemini = async (input: string | { question: string; url?: string }) => {
     const body = typeof input === 'string' ? { question: input } : input;
-    const response = await fetch(`${API_URL}/chat`, {
+    const response = await fetch(`${API_URL}/proposal-generator`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(body),

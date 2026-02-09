@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
-// Force Vercel Update 1
+import crypto from 'node:crypto'
+// Force Vercel Update 2
 import { cors } from 'hono/cors'
 import { drizzle } from 'drizzle-orm/neon-http'
 import { neon } from '@neondatabase/serverless'
@@ -7,13 +8,33 @@ import { eq } from 'drizzle-orm'
 import { users, sessions, resumes, history } from './db/schema.js'
 import { Bindings, Variables } from './types.js'
 import historyRouter from './routes/history.js'
-import resumeRouter from './routes/resume.js'
-import chat from './routes/chat.js'
+import resumeRouter from './routes/resumes.js'
+import jobsRouter from './routes/jobs.js'
+import proposalRouter from './routes/proposal.js'
+import criticRouter from './routes/critic.js'
+import proposalGenerator from './routes/proposal_generator.js'
 
 const app = new Hono<{ Bindings: Bindings, Variables: Variables }>()
 
-// Enable CORS
-app.use('/*', cors())
+// Enable CORS with explicit settings
+app.use('/*', cors({
+  origin: (origin) => origin, // Reflect origin for credentials support
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
+  maxAge: 600,
+  credentials: true,
+}))
+
+// Global Error Handler
+app.onError((err, c) => {
+  console.error(`GLOBAL_ERROR: ${err.message}`, err);
+  return c.json({
+    error: 'Internal Server Error',
+    message: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  }, 500);
+});
 
 // Health Check / Server Status
 app.get('/', (c) => {
@@ -227,32 +248,40 @@ app.patch('/api/users/:id', async (c) => {
 
 // Login
 app.post('/api/login', async (c) => {
-  const { email, password } = await c.req.json();
-  const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
-  if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
-  const sql = neon(dbUrl);
-  const db = drizzle(sql);
+  try {
+    const { email, password } = await c.req.json();
+    const dbUrl = c.env.DATABASE_URL || process.env.DATABASE_URL;
+    if (!dbUrl) return c.json({ error: 'Database URL not configured' }, 500);
+    const sql = neon(dbUrl);
+    const db = drizzle(sql);
 
-  const userResult = await db.select().from(users).where(eq(users.email, email));
-  const user = userResult[0];
+    const userResult = await db.select().from(users).where(eq(users.email, email));
+    const user = userResult[0];
 
-  if (!user) return c.json({ error: 'Invalid credentials' }, 401);
+    if (!user) return c.json({ error: 'Invalid credentials' }, 401);
 
-  if (user.password !== password) return c.json({ error: 'Invalid credentials' }, 401);
+    if (user.password !== password) return c.json({ error: 'Invalid credentials' }, 401);
 
-  const token = crypto.randomUUID();
-  // Valid for session duration (could add expiration)
-  await db.insert(sessions).values({
-    id: token,
-    userId: user.id
-  });
+    const token = crypto.randomUUID();
+    // Valid for session duration (could add expiration)
+    await db.insert(sessions).values({
+      id: token,
+      userId: user.id
+    });
 
-  return c.json({ token, email: user.email, name: user.name, role: user.role, domain: user.domain });
+    return c.json({ token, email: user.email, name: user.name, role: user.role, domain: user.domain });
+  } catch (e: any) {
+    console.error('Login Error:', e);
+    return c.json({ error: e.message }, 500);
+  }
 });
 
 // Mount Routes
-app.route('/api/chat', chat)
+app.route('/api/proposal-generator', proposalGenerator)
 app.route('/api/history', historyRouter)
-app.route('/api', resumeRouter) // resume routes handles /resume/generate and /resumes
+app.route('/api', resumeRouter)
+app.route('/api', jobsRouter)
+app.route('/api', proposalRouter)
+app.route('/api', criticRouter)
 
 export default app

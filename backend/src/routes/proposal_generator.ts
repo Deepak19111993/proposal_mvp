@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/neon-http'
 import { neon } from '@neondatabase/serverless'
-import { eq } from 'drizzle-orm'
-import { resumes as resumesTable, history } from '../db/schema.js'
+import { eq, desc, and, or } from 'drizzle-orm'
+import { resumes as resumesTable, history, users } from '../db/schema.js'
 import { Bindings, Variables } from '../types.js'
 
 
@@ -29,8 +29,9 @@ app.post('/', async (c) => {
     let answer = "No answer found or error occurred.";
     let fitscore = 0;
 
-    const { or, desc, and } = await import('drizzle-orm')
-    const { users } = await import('../db/schema')
+    // Dynamic imports removed
+    // const { or, desc, and } = await import('drizzle-orm')
+    // const { users } = await import('../db/schema')
 
     try {
         // 1. Fetch user's resumes AND Admin resumes for context (Filtered by Domain)
@@ -53,8 +54,7 @@ app.post('/', async (c) => {
 
         let query = db.select({
             id: resumesTable.id,
-            role: resumesTable.role,
-            content: resumesTable.content,
+            content: resumesTable.contentChunk,
             userId: resumesTable.userId,
             domain: resumesTable.domain
         })
@@ -91,7 +91,7 @@ app.post('/', async (c) => {
         }
 
         // 2. Format resumes for prompt
-        const resumesContext = resumes.map((r: any) => `ROLE: ${r.role}\nDOMAIN: ${r.domain}\nCONTENT: ${r.content}`).join('\n\n---\n\n');
+        const resumesContext = resumes.map((r: any) => `DOMAIN: ${r.domain}\nCONTENT: ${r.content}`).join('\n\n---\n\n');
 
         // Dynamic Persona based on Domain
         let expertPersona = "ELITE Recruitment Specialist and Proposal Architect";
@@ -110,19 +110,43 @@ app.post('/', async (c) => {
         ${question}
         
         ### EVALUATION PROTOCOL:
-        1. **ELIGIBILITY CHECK**: Verify if the requested Job Requirements strictly align with the User's Domain (**${userDomain}**).
-           - **STRICT DOMAIN MATCH**: The job/project MUST be primarily about **${userDomain}**.
-           - **Mismatch Example**: If User Domain is "AI/ML" and Job is "React/Frontend", this is a MISMATCH. Reject it.
-           - **Mismatch Example**: If User Domain is "Fullstack" and Job is "Data Science", this is a MISMATCH. Reject it.
-           - Only accept if there is a clear, direct relevance to **${userDomain}**.
+        1. **GATEKEEPER: DOMAIN & SKILL MATCHING** (CRITICAL PRIORITIZATION)
+           - **User Domain**: **${userDomain}**
+           - **CORE RULE**: **HARD SKILLS TRUMP JOB TITLES**.
+             - If the Job requires **TECHNICAL SKILLS** that exist in the User's Domain (e.g., Node.js, React for Fullstack), it is a **VALID MATCH**.
+             - **ACCEPT**: "Architect", "Team Lead", "Manager", "Interviewer", "Consultant" roles IF the tech stack aligns.
+           - **DOMAIN CHECK**:
+             - **MATCH**: User "Fullstack" vs Job "Senior Node.js Architect" -> **MATCH** (Same Tech Stack).
+             - **MATCH**: User "Fullstack" vs Job "Technical Interviewer (React/Node)" -> **MATCH** (User has skills to interview).
+             - **MISMATCH**: User "Fullstack" vs Job "Data Scientist" (Python/ML) -> **REJECT** (Different Tech Stack).
+           - **If Rejected**: Output JSON with 'fitscore: 0' and 'proposal: "❌ Domain Mismatch: This job is for [Job Domain], but your profile is [User Domain]."' and STOP.
 
-        2. **IF REJECTED (No valid match)**:
+
+        2. **ELIGIBILITY CHECK**: If Domain is valid, check for specific skills.
+
+           - **ALLOWED VARIATIONS**:
+             - **Role Seniority**: "Senior", "Lead", "Architect", "Manager", "Staff" are VALID matches if the tech stack fits.
+             - **Tech Stack**: If User Domain is "Fullstack", jobs asking for "Node.js", "React", "Frontend", "Backend", "Web Architect" are VALID matches.
+           - **Refusal Trigger**: If the domain is fundamentally different (e.g., "Legal", "Medical", "Embedded Systems" vs "Web"), Output 'fitscore: 0' immediately.
+
+        3. **IF REJECTED (No valid match)**:
            - Set "fitscore" to 0.
-           - Set "proposal" to: "### ❌ Mismatched Background\nYour current professional profiles (**${resumes.map(r => r.role).join(', ')}**) do not appear to contain the necessary skills for this role. I checked for relevant keywords but couldn't find a strong enough link.\n\n**Recommendation**: Please create a resume that explicitly highlights these skills."
+           - Set "proposal" to: "### ❌ Mismatched Background\nYour current professional profile does not appear to contain the necessary skills for this role. I checked for relevant keywords but couldn't find a strong enough link.\n\n**Recommendation**: Please create a resume that explicitly highlights these skills."
            - Set "requirementMatrix" and "clarifyingQuestions" to empty strings.
 
-        3. **IF ELIGIBLE MATCH**:
-           - Set "fitscore" (1-100).
+        4. **IF ELIGIBLE MATCH - SCORING ALGORITHM (Gap Analysis)**:
+           - **Start Score**: 100.
+           - **Deductions**:
+             - **Missing Key Tech**: -15 points per missing MAJOR skill (e.g., Job needs React, User has only Angular).
+             - **Missing Seniority**: -10 points if Job is "Lead/Architect" but User is "Mid-Level".
+             - **Missing Domain Experience**: -10 points if Job needs specific industry xp (e.g., Fintech) user lacks.
+             - **Perfect Match**: If User has ALL skills + Seniority -> Score 95-100.
+             - **Good Match**: Missing 1 minor skill -> Score 85-94.
+             - **Average Match**: Missing 1 major skill or Seniority gap -> Score 70-84.
+             - **Weak Match**: Missing multiple skills -> Score 50-69.
+           - **Set "fitscore"**: Calculated based on above deductions.
+
+        5. **PROPOSAL GENERATION**:
            - "proposal": A professional intro/narrative (max 400 words). Do NOT include internal IDs or placeholders. Focus on the value proposition.
            - "requirementMatrix": A point-wise Markdown list showing how your skills match requirements. Each point should look like: "- [Requirement Name]: [Matching Skill/Experience from your Resume Role]". Do NOT include IDs.
            - "clarifyingQuestions": Max 3 strategic questions for the client.

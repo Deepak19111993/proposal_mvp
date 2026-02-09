@@ -1,0 +1,8 @@
+Vercel CLI 50.13.2
+Retrieving project…
+Resolving deployment "proposal-backend-rho.vercel.app"
+Streaming logs for deployment dpl_3yVwfiJKonqcr3L9maNBNX5K7qTu starting from 16:42:55.83
+
+waiting for new logs...
+WARN! Exceeded query duration limit of 5 minutes
+

@@ -47,6 +47,8 @@ export const Resume = () => {
     const [resumeToDelete, setResumeToDelete] = useState<string | null>(null);
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
 
+
+
     useEffect(() => {
         loadResumes();
     }, []);
@@ -102,9 +104,10 @@ export const Resume = () => {
             setRole('');
             setDescription('');
             setDomain('');
-        } catch (error) {
+            toast.success('Profile uploaded and indexed successfully');
+        } catch (error: any) {
             console.error(error);
-            toast.error("Failed to generate resume");
+            toast.error(error.message || "Failed to process profile");
         }
         stopLoading();
     };
@@ -113,13 +116,15 @@ export const Resume = () => {
         <div className={user?.role === 'SUPER_ADMIN' ? "grid grid-cols-1 lg:grid-cols-5 gap-8 items-start" : "space-y-8"}>
             {user?.role === 'SUPER_ADMIN' && (
                 <div className="lg:col-span-2 bg-white py-6 px-4 shadow sm:rounded-lg sm:px-6 lg:sticky lg:top-4 mb-8 lg:mb-0">
-                    <div className="text-center mb-8">
-                        <h2 className="text-3xl font-extrabold text-gray-900 border-b pb-4 mb-4">Resume Generator</h2>
-                        <p className="text-gray-500">Create a tailored resume in seconds.</p>
+                    <div className="text-center mb-6">
+                        <h2 className="text-3xl font-extrabold text-gray-900 border-b pb-4 mb-4">Upload Profile</h2>
+                        <p className="text-gray-500 text-sm">
+                            Paste your full professional details below. We will chunk and index it for your AI Assistant.
+                        </p>
                     </div>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-1">
-                            <label htmlFor="role" className="block text-sm font-medium text-gray-700">Target Role</label>
+                            <label htmlFor="role" className="block text-sm font-medium text-gray-700">Profile Name / Role</label>
                             <div className="mt-1">
                                 <Input id="role" type="text" required value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Senior Product Manager" className="mt-1" />
                             </div>
@@ -138,15 +143,17 @@ export const Resume = () => {
                                 </SelectContent>
                             </Select>
                         </div>
+
                         <div className="space-y-1">
-                            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Job Description / Your Experience</label>
+                            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Full Resume Content</label>
                             <div className="mt-1">
-                                <Textarea id="description" rows={4} required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Paste the job description or a summary of your skills..." className="mt-1" />
+                                <Textarea id="description" rows={12} required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Paste your professional history or full resume here..." className="mt-1" />
                             </div>
                         </div>
+
                         <div className="space-y-1">
                             <button type="submit" disabled={loading || !role.trim() || !description.trim()} className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 ${(loading || !role.trim() || !description.trim()) ? 'opacity-75 cursor-not-allowed bg-indigo-400 hover:bg-indigo-400' : ''}`}>
-                                {loading ? 'Generating...' : 'Generate Resume'}
+                                {loading ? 'Processing...' : 'Upload and Index'}
                             </button>
                         </div>
                     </form>
