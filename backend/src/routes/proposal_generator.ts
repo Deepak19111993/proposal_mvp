@@ -33,9 +33,61 @@ app.post('/', async (c) => {
     // const { or, desc, and } = await import('drizzle-orm')
     // const { users } = await import('../db/schema')
 
+    // Helper for Domain Validation
+    async function validateDomain(userDomain: string, jobDescription: string, apiKey: string, model: string) {
+        const prompt = `You are a strict domain validator for a recruitment platform.
+       User Domain: ${userDomain}
+       Job Description: ${jobDescription}
+       Task: Determine if this Job Description is technically relevant to the User Domain.
+       - Consider 'Fullstack' relevant to 'Frontend', 'Backend', 'Web', 'Software Engineer', 'MERN', 'React', 'Node'.
+       - Consider 'GenAI' relevant to 'AI', 'ML', 'LLM', 'RAG', 'Python', 'Data Scientist'.
+       - Consider 'DevOps' relevant to 'SRE', 'Platform', 'Infrastructure', 'Cloud', 'AWS', 'Docker', 'Kubernetes'.
+       - If the User Domain is null or empty, return isMatch: true (permissive).
+       Output JSON ONLY: { "isMatch": boolean, "jobDomain": string, "reason": string }`;
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { response_mime_type: "application/json" }
+                })
+            });
+            const data = await response.json() as any;
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) return { isMatch: true, reason: "Validation failed, defaulting to match" }; // Fail open
+            return JSON.parse(text);
+        } catch (e) {
+            console.error("Domain validation error", e);
+            return { isMatch: true, reason: "Validation error" };
+        }
+    }
+
     try {
         // 1. Fetch user's resumes AND Admin resumes for context (Filtered by Domain)
         const userDomain = c.get('domain');
+        // PROPOSAL: Implement Strict Domain Check
+        if (userDomain) {
+            if (!apiKey) {
+                console.error("API Key missing for domain validation");
+                // Skip validation or error out? Let's skip to avoid blocking if config is bad, or maybe we should error. 
+                // But main flow will fail anyway if apiKey is missing. 
+            } else {
+                const validation = await validateDomain(userDomain, question, apiKey, model);
+                if (!validation.isMatch) {
+                    return c.json({
+                        id: crypto.randomUUID(),
+                        question,
+                        answer: `### ❌ Domain Mismatch\n\n**Your Profile Domain**: ${userDomain}\n**Job Domain**: ${validation.jobDomain || 'Different'}\n\n${validation.reason}\n\n**Recommendation**: Please switch to a profile that matches this job description or update your domain settings.`,
+                        fitscore: 0,
+                        timestamp: new Date().toISOString(),
+                        userId
+                    });
+                }
+            }
+        }
+
         const userRole = c.get('role');
 
         const conditions = [eq(resumesTable.userId, userId)];
@@ -93,65 +145,63 @@ app.post('/', async (c) => {
         // 2. Format resumes for prompt
         const resumesContext = resumes.map((r: any) => `DOMAIN: ${r.domain}\nCONTENT: ${r.content}`).join('\n\n---\n\n');
 
-        // Dynamic Persona based on Domain
-        let expertPersona = "ELITE Recruitment Specialist and Proposal Architect";
-        if (userDomain === 'GenAI') expertPersona = "World-Class Generative AI Solutions Architect & Proposal Expert";
-        else if (userDomain === 'Fullstack') expertPersona = "Senior Fullstack Engineering Lead & Technical Proposal Strategist";
-        else if (userDomain === 'DevOps') expertPersona = "Principal DevOps Engineer & Infrastructure Consultant";
-        else if (userDomain === 'AI/ML') expertPersona = "Chief AI/ML Scientist & Algorithm Strategist";
+        // Dynamic Persona based on Domain -> Now focused on WRITING the proposal
+        let expertPersona = "Elite Proposal Writer & Career Strategist";
 
         const systemPrompt = `You are an ${expertPersona}.
-        Your ABSOLUTE PRIORITY is to verify if requested Job Requirements match the User's Professional Background (Resumes).
-        
-        ### USER'S RESUMES:
+        Your TASK is to write a highly professional, persuasive, and custom tailored cover letter/proposal ON BEHALF OF the user for a specific job.
+
+        ### USER'S RESUME (Your Identity):
         ${resumesContext}
         
-        ### TARGET JOB REQUIREMENTS:
+        ### TARGET JOB DESCRIPTION:
         ${question}
         
-        ### EVALUATION PROTOCOL:
-        1. **GATEKEEPER: DOMAIN & SKILL MATCHING** (CRITICAL PRIORITIZATION)
+        ### EVALUATION & GENERATION PROTOCOL:
+        
+        1. **GATEKEEPER: RELEVANCE CHECK**
            - **User Domain**: **${userDomain}**
-           - **CORE RULE**: **HARD SKILLS TRUMP JOB TITLES**.
-             - If the Job requires **TECHNICAL SKILLS** that exist in the User's Domain (e.g., Node.js, React for Fullstack), it is a **VALID MATCH**.
-             - **ACCEPT**: "Architect", "Team Lead", "Manager", "Interviewer", "Consultant" roles IF the tech stack aligns.
-           - **DOMAIN CHECK**:
-             - **MATCH**: User "Fullstack" vs Job "Senior Node.js Architect" -> **MATCH** (Same Tech Stack).
-             - **MATCH**: User "Fullstack" vs Job "Technical Interviewer (React/Node)" -> **MATCH** (User has skills to interview).
-             - **MISMATCH**: User "Fullstack" vs Job "Data Scientist" (Python/ML) -> **REJECT** (Different Tech Stack).
-           - **If Rejected**: Output JSON with 'fitscore: 0' and 'proposal: "❌ Domain Mismatch: This job is for [Job Domain], but your profile is [User Domain]."' and STOP.
+           - **Rule**: Verify if the user's resume technically qualifies for this job.
+             - **Match**: If the core tech stack or domain aligns (e.g. React dev applying for Frontend Lead), PROCEED.
+             - **Mismatch**: If the domains are fundamentally different (e.g. React dev applying for Data Science), REJECT.
+           - **If Rejected**: Output JSON with 'fitscore: 0' and 'proposal: "❌ Domain Mismatch: This job appears to be outside your expertise area based on your current profile permissions (${userDomain})."' and STOP.
 
+        2. **SCORING (Fit Analysis)**:
+           - **Analyze the gap** between resume skills and job requirements.
+           - **Perfect Match (90-100)**: Hand-in-glove fit.
+           - **Good Match (75-89)**: Minor skill gaps but strong core alignment.
+           - **Average Match (60-74)**: Missing some key requirements but adaptable.
+           - **Weak Match (<60)**: Significant gaps.
 
-        2. **ELIGIBILITY CHECK**: If Domain is valid, check for specific skills.
+        3. **PROPOSAL GENERATION (The Output)**:
+           - **VOICE**: Write in the **FIRST PERSON ("I")**. You ARE the candidate.
+           - **TONE**: Professional, confident, concise, and solution-oriented.
+           - **STRUCTURE**:
+             - **Hook**: Immediately address the client's specific need/problem.
+             - **Value**: detailed how your specific past experience (from resume) solves their problem.
+             - **Call to Action**: A confident closing inviting discussion.
+           - **ABSOLUTE PROHIBITIONS**:
+             - ❌ NEVER say "Based on your resume" or "Reviewing your profile".
+             - ❌ NEVER say "I am a strong candidate for..." as an opener. Be more creative.
+             - ❌ NEVER mention "fit score" or internal logic in the proposal text.
+             - ❌ Do NOT include placeholders like "[Your Name]".
+           - **LENGTH**: roughly 200-300 words. Short and punchy.
 
-           - **ALLOWED VARIATIONS**:
-             - **Role Seniority**: "Senior", "Lead", "Architect", "Manager", "Staff" are VALID matches if the tech stack fits.
-             - **Tech Stack**: If User Domain is "Fullstack", jobs asking for "Node.js", "React", "Frontend", "Backend", "Web Architect" are VALID matches.
-           - **Refusal Trigger**: If the domain is fundamentally different (e.g., "Legal", "Medical", "Embedded Systems" vs "Web"), Output 'fitscore: 0' immediately.
-
-        3. **IF REJECTED (No valid match)**:
-           - Set "fitscore" to 0.
-           - Set "proposal" to: "### ❌ Mismatched Background\nYour current professional profile does not appear to contain the necessary skills for this role. I checked for relevant keywords but couldn't find a strong enough link.\n\n**Recommendation**: Please create a resume that explicitly highlights these skills."
-           - Set "requirementMatrix" and "clarifyingQuestions" to empty strings.
-
-        4. **IF ELIGIBLE MATCH - SCORING ALGORITHM (Gap Analysis)**:
-           - **Start Score**: 100.
-           - **Deductions**:
-             - **Missing Key Tech**: -15 points per missing MAJOR skill (e.g., Job needs React, User has only Angular).
-             - **Missing Seniority**: -10 points if Job is "Lead/Architect" but User is "Mid-Level".
-             - **Missing Domain Experience**: -10 points if Job needs specific industry xp (e.g., Fintech) user lacks.
-             - **Perfect Match**: If User has ALL skills + Seniority -> Score 95-100.
-             - **Good Match**: Missing 1 minor skill -> Score 85-94.
-             - **Average Match**: Missing 1 major skill or Seniority gap -> Score 70-84.
-             - **Weak Match**: Missing multiple skills -> Score 50-69.
-           - **Set "fitscore"**: Calculated based on above deductions.
-
-        5. **PROPOSAL GENERATION**:
-           - "proposal": A professional intro/narrative (max 400 words). Do NOT include internal IDs or placeholders. Focus on the value proposition.
-           - "requirementMatrix": A point-wise Markdown list showing how your skills match requirements. Each point should look like: "- [Requirement Name]: [Matching Skill/Experience from your Resume Role]". Do NOT include IDs.
-           - "clarifyingQuestions": Max 3 strategic questions for the client.
-
-        Output MUST be a valid JSON object with keys: fitscore, proposal, requirementMatrix, clarifyingQuestions.`;
+        4. **OUTPUT FORMAT**:
+           Return ONLY a valid JSON object:
+           {
+             "fitscore": number, // 0-100
+             "proposal": "string", // The professional cover letter text (markdown allowed)
+             "requirementMatrix": [ // Array of objects
+               { "requirement": "Job Requirement", "match": "Your specific matching skill/experience" }
+               // ... map key requirements to user skills
+             ],
+             "clarifyingQuestions": [ // Array of strings
+               "Question 1",
+               "Question 2",
+               "Question 3"
+             ]
+           }`;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
             method: 'POST',

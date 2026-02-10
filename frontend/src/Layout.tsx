@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useLoading } from './context/LoadingContext';
 import { Menu, X } from 'lucide-react';
+import { Logo } from './components/ui/Logo';
 
 export const Layout = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -37,11 +38,13 @@ export const Layout = () => {
                 </div>
             )}
             <nav className="bg-white shadow sticky top-0 z-40">
-                <div className="max-w-[1600px] mx-auto px-[10px] sm:px-6 lg:px-8">
+                <div className="max-w-[1600px] 3xl:max-w-[2400px] mx-auto px-[10px] sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex">
                             <div className="flex-shrink-0 flex items-center">
-                                <Link to="/" className="text-xl font-bold text-indigo-600">Hono AI</Link>
+                                <Link to="/">
+                                    <Logo />
+                                </Link>
                             </div>
                             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                                 {user?.role !== 'SUPER_ADMIN' && (
@@ -173,7 +176,7 @@ export const Layout = () => {
                     </div>
                 </div>
             </nav>
-            <div className="max-w-[1600px] mx-auto py-12 px-[10px] sm:px-6 lg:px-8">
+            <div className="max-w-[1600px] 3xl:max-w-[2400px] mx-auto md:py-12 py-8 px-[10px] sm:px-6 lg:px-8">
                 <Outlet />
             </div>
         </div>

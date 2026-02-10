@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { generateResume, getResumes, deleteResume, updateResume } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useLoading } from '../context/LoadingContext';
@@ -33,14 +33,23 @@ import {
     AlertDialogTitle,
 } from "../components/ui/alert-dialog"
 
+interface ResumeItem {
+    id: string;
+    role: string;
+    content: string;
+    timestamp: string;
+    domain?: string;
+    description: string;
+}
+
 export const Resume = () => {
     const [role, setRole] = useState('');
     const [description, setDescription] = useState('');
     const [domain, setDomain] = useState('');
     const [hasLoaded, setHasLoaded] = useState(false);
     const { startLoading, stopLoading, loading } = useLoading();
-    const [resumes, setResumes] = useState<any[]>([]);
-    const [selectedResume, setSelectedResume] = useState<any | null>(null);
+    const [resumes, setResumes] = useState<ResumeItem[]>([]);
+    const [selectedResume, setSelectedResume] = useState<ResumeItem | null>(null);
     const { user } = useAuth();
 
     // Resume Delete Confirmation
@@ -48,22 +57,24 @@ export const Resume = () => {
     const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
 
 
-
-    useEffect(() => {
-        loadResumes();
-    }, []);
-
-    const loadResumes = async () => {
+    const loadResumes = useCallback(async () => {
         startLoading();
         try {
             const data = await getResumes();
             setResumes(data);
         } catch (error) {
             console.error(error);
+            toast.error('Failed to load resumes');
         }
-        stopLoading();
         setHasLoaded(true);
-    };
+        stopLoading();
+    }, [startLoading, stopLoading]);
+
+    useEffect(() => {
+
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadResumes();
+    }, [loadResumes]);
 
     const confirmDeleteResume = async () => {
         if (!resumeToDelete) return;
@@ -90,7 +101,7 @@ export const Resume = () => {
             await updateResume(id, newDomain);
             setResumes(prev => prev.map(r => r.id === id ? { ...r, domain: newDomain } : r));
             toast.success('Domain updated');
-        } catch (error) {
+        } catch {
             toast.error('Failed to update domain');
         }
     };
@@ -113,46 +124,46 @@ export const Resume = () => {
     };
 
     return (
-        <div className={user?.role === 'SUPER_ADMIN' ? "grid grid-cols-1 lg:grid-cols-5 gap-8 items-start" : "space-y-8"}>
+        <div className={user?.role === 'SUPER_ADMIN' ? "grid grid-cols-1 lg:grid-cols-5 gap-8 3xl:gap-16 items-start" : "space-y-8 3xl:space-y-12"}>
             {user?.role === 'SUPER_ADMIN' && (
-                <div className="lg:col-span-2 bg-white py-6 px-4 shadow sm:rounded-lg sm:px-6 lg:sticky lg:top-4 mb-8 lg:mb-0">
-                    <div className="text-center mb-6">
-                        <h2 className="text-3xl font-extrabold text-gray-900 border-b pb-4 mb-4">Upload Profile</h2>
-                        <p className="text-gray-500 text-sm">
+                <div className="lg:col-span-2 bg-white py-6 px-4 3xl:p-10 shadow sm:rounded-lg sm:px-6 lg:sticky lg:top-4 mb-8 lg:mb-0">
+                    <div className="text-center mb-6 3xl:mb-10">
+                        <h2 className="text-3xl 3xl:text-5xl font-extrabold text-gray-900 border-b pb-4 mb-4 3xl:pb-6 3xl:mb-8">Upload Profile</h2>
+                        <p className="text-gray-500 text-sm 3xl:text-lg">
                             Paste your full professional details below. We will chunk and index it for your AI Assistant.
                         </p>
                     </div>
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6 3xl:space-y-8">
                         <div className="space-y-1">
-                            <label htmlFor="role" className="block text-sm font-medium text-gray-700">Profile Name / Role</label>
+                            <label htmlFor="role" className="block text-sm 3xl:text-lg font-medium text-gray-700">Profile Name / Role</label>
                             <div className="mt-1">
-                                <Input id="role" type="text" required value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Senior Product Manager" className="mt-1" />
+                                <Input id="role" type="text" required value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Senior Product Manager" className="mt-1 3xl:p-4 3xl:text-lg" />
                             </div>
                         </div>
                         <div className="space-y-1">
-                            <label className="block text-sm font-medium text-gray-700">Domain</label>
+                            <label className="block text-sm 3xl:text-lg font-medium text-gray-700">Domain</label>
                             <Select value={domain} onValueChange={setDomain}>
-                                <SelectTrigger className="w-full">
+                                <SelectTrigger className="w-full 3xl:p-4 3xl:text-lg">
                                     <SelectValue placeholder="Select a domain (optional)" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Fullstack">Fullstack</SelectItem>
-                                    <SelectItem value="GenAI">GenAI</SelectItem>
-                                    <SelectItem value="DevOps">DevOps</SelectItem>
-                                    <SelectItem value="AI/ML">AI/ML</SelectItem>
+                                    <SelectItem value="Fullstack" className="3xl:text-lg">Fullstack</SelectItem>
+                                    <SelectItem value="GenAI" className="3xl:text-lg">GenAI</SelectItem>
+                                    <SelectItem value="DevOps" className="3xl:text-lg">DevOps</SelectItem>
+                                    <SelectItem value="AI/ML" className="3xl:text-lg">AI/ML</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-1">
-                            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Full Resume Content</label>
+                            <label htmlFor="description" className="block text-sm 3xl:text-lg font-medium text-gray-700">Full Resume Content</label>
                             <div className="mt-1">
-                                <Textarea id="description" rows={12} required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Paste your professional history or full resume here..." className="mt-1" />
+                                <Textarea id="description" rows={12} required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Paste your professional history or full resume here..." className="mt-1 3xl:p-4 3xl:text-lg" />
                             </div>
                         </div>
 
                         <div className="space-y-1">
-                            <button type="submit" disabled={loading || !role.trim() || !description.trim()} className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 ${(loading || !role.trim() || !description.trim()) ? 'opacity-75 cursor-not-allowed bg-indigo-400 hover:bg-indigo-400' : ''}`}>
+                            <button type="submit" disabled={loading || !role.trim() || !description.trim()} className={`w-full flex justify-center py-2 px-4 3xl:py-4 3xl:px-8 border border-transparent rounded-md shadow-sm text-sm 3xl:text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 ${(loading || !role.trim() || !description.trim()) ? 'opacity-75 cursor-not-allowed bg-indigo-400 hover:bg-indigo-400' : ''}`}>
                                 {loading ? 'Processing...' : 'Upload and Index'}
                             </button>
                         </div>
@@ -161,13 +172,13 @@ export const Resume = () => {
             )}
 
             <div className={user?.role === 'SUPER_ADMIN' ? "lg:col-span-3" : ""}>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Your Resumes</h3>
+                <h3 className="text-xl 3xl:text-3xl font-bold text-gray-900 mb-4 3xl:mb-8">Your Resumes</h3>
                 <div className="bg-white shadow overflow-hidden sm:rounded-md">
                     <ul className="divide-y divide-gray-200">
                         {(!hasLoaded || (loading && resumes.length === 0)) ? (
                             [1, 2, 3].map((i) => (
                                 <li key={i}>
-                                    <div className="px-4 py-4 sm:px-6">
+                                    <div className="px-4 py-4 3xl:p-8 sm:px-6">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex items-center gap-2">
                                                 <Skeleton className="h-5 w-40" /> {/* Role */}
@@ -177,7 +188,7 @@ export const Resume = () => {
                                                 <Skeleton className="h-5 w-16 rounded-full" /> {/* Status */}
                                             </div>
                                         </div>
-                                        <div className="mt-4 flex flex-col gap-3">
+                                        <div className="mt-4 3xl:mt-6 flex flex-col gap-3 3xl:gap-4">
                                             <div className="space-y-2">
                                                 <Skeleton className="h-4 w-full" /> {/* Description line 1 */}
                                                 <Skeleton className="h-4 w-3/4" /> {/* Description line 2 */}
@@ -194,17 +205,17 @@ export const Resume = () => {
                             resumes.map((resume) => (
                                 <li key={resume.id}>
                                     <div className="block hover:bg-gray-50 w-full text-left focus:outline-none cursor-pointer" onClick={() => setSelectedResume(resume)}>
-                                        <div className="px-4 py-4 sm:px-6">
+                                        <div className="px-4 py-4 3xl:p-8 sm:px-6">
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="flex flex-wrap items-center gap-2 min-w-0">
-                                                    <p className="text-sm font-bold text-indigo-600 truncate">{resume.role}</p>
+                                                    <p className="text-sm 3xl:text-xl font-bold text-indigo-600 truncate">{resume.role}</p>
                                                     {user?.role === 'SUPER_ADMIN' ? (
                                                         <div onClick={(e) => e.stopPropagation()}>
                                                             <Select
                                                                 value={resume.domain || ''}
                                                                 onValueChange={(val) => handleUpdateDomain(resume.id, val)}
                                                             >
-                                                                <SelectTrigger className="h-7 w-[110px] text-xs bg-gray-50 border-gray-200">
+                                                                <SelectTrigger className="h-7 3xl:h-10 w-[110px] 3xl:w-[150px] text-xs 3xl:text-base bg-gray-50 border-gray-200">
                                                                     <SelectValue placeholder="Domain" />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
@@ -216,7 +227,7 @@ export const Resume = () => {
                                                             </Select>
                                                         </div>
                                                     ) : resume.domain && (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 3xl:px-4 3xl:py-1 rounded-full text-xs 3xl:text-sm font-medium bg-blue-100 text-blue-800">
                                                             {resume.domain}
                                                         </span>
                                                     )}
@@ -225,25 +236,25 @@ export const Resume = () => {
                                                     {user?.role === 'SUPER_ADMIN' && (
                                                         <button
                                                             onClick={(e) => handleDeleteClick(e, resume.id)}
-                                                            className="px-2 py-1 text-xs font-semibold rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors z-10 relative"
+                                                            className="px-2 py-1 3xl:px-4 3xl:py-2 text-xs 3xl:text-sm font-semibold rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors z-10 relative"
                                                         >
                                                             Delete
                                                         </button>
                                                     )}
-                                                    <p className="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
+                                                    <p className="px-2 py-0.5 3xl:px-4 3xl:py-1 inline-flex text-xs 3xl:text-sm leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
                                                         Ready
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="mt-2 flex flex-col gap-2">
-                                                <p className="text-sm text-gray-500 line-clamp-2">
+                                            <div className="mt-2 3xl:mt-4 flex flex-col gap-2 3xl:gap-4">
+                                                <p className="text-sm 3xl:text-lg text-gray-500 line-clamp-2">
                                                     {resume.description}
                                                 </p>
                                                 <div className="flex flex-col items-start gap-0.5">
-                                                    <span className="text-sm font-medium text-gray-900">
+                                                    <span className="text-sm 3xl:text-lg font-medium text-gray-900">
                                                         {new Date(resume.timestamp).getDate()}, {new Date(resume.timestamp).toLocaleString('default', { month: 'long' })}, {new Date(resume.timestamp).getFullYear()}
                                                     </span>
-                                                    <span className="text-gray-500 text-xs">
+                                                    <span className="text-gray-500 text-xs 3xl:text-sm">
                                                         {new Date(resume.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
                                                 </div>

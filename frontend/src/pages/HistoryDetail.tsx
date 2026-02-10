@@ -5,10 +5,20 @@ import { useLoading } from '../context/LoadingContext';
 import { Skeleton } from '../components/ui/Skeleton';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { BackArrowIcon } from '../assets/svgs/BackArrowIcon';
+import { InfoCircleIcon } from '../assets/svgs/InfoCircleIcon';
+
+interface HistoryItem {
+    id: string;
+    timestamp: string;
+    question: string;
+    answer: string;
+    fitscore?: number;
+}
 
 export const HistoryDetail = () => {
     const { id } = useParams<{ id: string }>();
-    const [item, setItem] = useState<any>(null);
+    const [item, setItem] = useState<HistoryItem | null>(null);
     const { startLoading, stopLoading } = useLoading();
 
     useEffect(() => {
@@ -19,7 +29,7 @@ export const HistoryDetail = () => {
                 .catch(console.error)
                 .finally(() => stopLoading());
         }
-    }, [id]);
+    }, [id, startLoading, stopLoading]);
 
     const truncateWords = (text: string, limit: number) => {
         const words = text.split(' ');
@@ -81,41 +91,39 @@ export const HistoryDetail = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 3xl:space-y-10">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl">
+                <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl 3xl:text-5xl">
                     Proposal Details
                 </h2>
-                <Link to="/history" className="text-indigo-600 hover:text-indigo-900 font-medium inline-flex items-center">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                <Link to="/history" className="text-indigo-600 hover:text-indigo-900 font-medium inline-flex items-center 3xl:text-xl">
+                    <BackArrowIcon className="w-4 h-4 3xl:w-6 3xl:h-6 mr-1" />
                     Back to History
                 </Link>
             </div>
 
             <div className="bg-white shadow sm:rounded-lg overflow-hidden border border-gray-100">
-                <div className="bg-indigo-50/50 px-4 py-5 sm:px-6 border-b border-indigo-100">
+                <div className="bg-indigo-50/50 px-4 py-5 sm:px-6 3xl:p-10 border-b border-indigo-100">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex items-start flex-1">
                             <div className="flex-shrink-0 mt-1">
-                                <svg className="h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                                </svg>
+                                <InfoCircleIcon className="h-5 w-5 3xl:h-8 3xl:w-8 text-indigo-500" />
                             </div>
-                            <div className="ml-3">
-                                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Requirements</h3>
-                                <div className="mt-2 text-sm text-gray-700 leading-relaxed italic">
+                            <div className="ml-3 3xl:ml-6">
+                                <h3 className="text-sm 3xl:text-xl font-bold text-gray-900 uppercase tracking-wider">Requirements</h3>
+                                <div className="mt-2 text-sm 3xl:text-lg text-gray-700 leading-relaxed italic">
                                     <p className="block md:hidden">"{truncateWords(item.question, 40)}"</p>
                                     <p className="hidden md:block">"{item.question.length > 800 ? item.question.substring(0, 800) + "..." : item.question}"</p>
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-col items-end gap-2 w-full sm:w-auto self-stretch sm:self-auto">
+                        <div className="flex flex-col items-end gap-2 3xl:gap-4 w-full sm:w-auto self-stretch sm:self-auto">
                             {item.fitscore !== undefined && (
-                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold ring-1 ring-inset ${getScoreColor(item.fitscore)}`}>
+                                <span className={`inline-flex items-center rounded-full px-3 py-1 3xl:px-4 3xl:py-2 text-xs 3xl:text-lg font-bold ring-1 ring-inset ${getScoreColor(item.fitscore)}`}>
                                     Fit Score: {item.fitscore}/100
                                 </span>
                             )}
-                            <div className="text-[10px] text-gray-500 flex flex-col items-end">
+                            <div className="text-[10px] 3xl:text-sm text-gray-500 flex flex-col items-end">
                                 <span>
                                     {new Date(item.timestamp).getDate()}, {new Date(item.timestamp).toLocaleString('default', { month: 'long' })}, {new Date(item.timestamp).getFullYear()}
                                 </span>
@@ -129,11 +137,11 @@ export const HistoryDetail = () => {
             </div>
 
             <div className="bg-white shadow sm:rounded-lg overflow-hidden">
-                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Generated Proposal</h3>
+                <div className="px-4 py-5 sm:px-6 3xl:p-10 border-b border-gray-200">
+                    <h3 className="text-lg 3xl:text-3xl leading-6 font-medium text-gray-900">Generated Proposal</h3>
                 </div>
-                <div className="px-4 py-5 sm:p-6">
-                    <article className="prose prose-indigo max-w-none text-gray-800">
+                <div className="px-4 py-5 sm:p-6 3xl:p-12">
+                    <article className="prose prose-indigo 3xl:prose-2xl max-w-none text-gray-800">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.answer}</ReactMarkdown>
                     </article>
                 </div>

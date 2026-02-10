@@ -2,14 +2,14 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hono-app",
   "main": "src/index.ts",
-  "compatibility_date": "2026-02-03",
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
+  "compatibility_date": "2026-01-28",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "vars": {
     "MY_NAME": "Hono",
-    "GEMINI_API_KEY": "AIzaSyAI-_OM8JKLvFZpAUDCJkfzPVePf3ZOhxo",
-    "GEMINI_MODEL": "gemini-robotics-er-1.5-preview",
+    "GEMINI_API_KEY": "AIzaSyBHE2NRZzrPBCxT062XBhH2zVA0BwTbOJM",
+    "GEMINI_MODEL": "gemini-3-flash-preview",
     "DATABASE_URL": "postgresql://neondb_owner:npg_K3c9EobpVLdA@ep-dark-waterfall-aizjvr18-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
   },
   "kv_namespaces": [
