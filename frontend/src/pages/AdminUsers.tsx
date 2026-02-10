@@ -175,14 +175,16 @@ export const AdminUsers = () => {
 
     return (
         <div className="space-y-6 3xl:space-y-10">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-row justify-between items-center gap-4">
                 <h2 className="text-2xl font-bold text-gray-900 3xl:text-4xl">User Management</h2>
-                <button
-                    onClick={() => setIsCreateOpen(true)}
-                    className="px-4 py-2 3xl:px-6 3xl:py-3 border border-transparent rounded-md shadow-sm text-sm 3xl:text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-                >
-                    Add User
-                </button>
+                <div className="flex justify-end">
+                    <button
+                        onClick={() => setIsCreateOpen(true)}
+                        className="min-w-[100px] px-4 py-2 3xl:px-6 3xl:py-3 border border-transparent rounded-md shadow-sm text-sm 3xl:text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                    >
+                        Add User
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white shadow overflow-hidden sm:rounded-md">

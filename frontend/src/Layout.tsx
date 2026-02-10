@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useLoading } from './context/LoadingContext';
@@ -10,6 +10,24 @@ export const Layout = () => {
     const location = useLocation();
     const { logout, user, token } = useAuth();
     const { loading } = useLoading();
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+    useEffect(() => {
+        const handler = (e: any) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        setDeferredPrompt(null);
+    };
     // Modal logic removed as it's moved to AdminUsers page
 
     const isActive = (path: string) => {
@@ -162,16 +180,27 @@ export const Layout = () => {
                                         <div className="text-xs text-gray-500 truncate">{user?.role}</div>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => {
-                                        setIsMobileMenuOpen(false);
-                                        logout();
-                                    }}
-                                    className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
-                                >
-                                    Log out
-                                </button>
+                                {deferredPrompt && (
+                                    <button
+                                        onClick={() => {
+                                            handleInstallClick();
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                        className="w-full mb-3 flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-indigo-700 bg-indigo-100 hover:bg-indigo-200 transition-colors"
+                                    >
+                                        Install App
+                                    </button>
+                                )}
                             </div>
+                            <button
+                                onClick={() => {
+                                    setIsMobileMenuOpen(false);
+                                    logout();
+                                }}
+                                className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                            >
+                                Log out
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -179,6 +208,6 @@ export const Layout = () => {
             <div className="max-w-[1600px] 3xl:max-w-[2400px] mx-auto md:py-12 py-8 px-[10px] sm:px-6 lg:px-8">
                 <Outlet />
             </div>
-        </div>
+        </div >
     )
 }

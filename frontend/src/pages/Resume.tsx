@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { generateResume, getResumes, deleteResume, updateResume } from '../api';
+import { generateResume, getResumes, deleteResume } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useLoading } from '../context/LoadingContext';
 import ReactMarkdown from 'react-markdown';
@@ -96,15 +96,7 @@ export const Resume = () => {
         setIsDeleteAlertOpen(true);
     };
 
-    const handleUpdateDomain = async (id: string, newDomain: string) => {
-        try {
-            await updateResume(id, newDomain);
-            setResumes(prev => prev.map(r => r.id === id ? { ...r, domain: newDomain } : r));
-            toast.success('Domain updated');
-        } catch {
-            toast.error('Failed to update domain');
-        }
-    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -126,14 +118,14 @@ export const Resume = () => {
     return (
         <div className={user?.role === 'SUPER_ADMIN' ? "grid grid-cols-1 lg:grid-cols-5 gap-8 3xl:gap-16 items-start" : "space-y-8 3xl:space-y-12"}>
             {user?.role === 'SUPER_ADMIN' && (
-                <div className="lg:col-span-2 bg-white py-6 px-4 3xl:p-10 shadow sm:rounded-lg sm:px-6 lg:sticky lg:top-4 mb-8 lg:mb-0">
+                <div className="lg:col-span-2 bg-white py-6 px-4 3xl:p-10 shadow sm:rounded-lg sm:px-6 lg:sticky lg:top-4 mb-6 lg:mb-0">
                     <div className="text-center mb-6 3xl:mb-10">
-                        <h2 className="text-3xl 3xl:text-5xl font-extrabold text-gray-900 border-b pb-4 mb-4 3xl:pb-6 3xl:mb-8">Upload Profile</h2>
+                        <h2 className="text-2xl md:text-3xl 3xl:text-5xl font-extrabold text-gray-900 border-b pb-4 mb-4 3xl:pb-6 3xl:mb-8">Upload Profile</h2>
                         <p className="text-gray-500 text-sm 3xl:text-lg">
                             Paste your full professional details below. We will chunk and index it for your AI Assistant.
                         </p>
                     </div>
-                    <form onSubmit={handleSubmit} className="space-y-6 3xl:space-y-8">
+                    <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6 3xl:space-y-8">
                         <div className="space-y-1">
                             <label htmlFor="role" className="block text-sm 3xl:text-lg font-medium text-gray-700">Profile Name / Role</label>
                             <div className="mt-1">
@@ -144,7 +136,7 @@ export const Resume = () => {
                             <label className="block text-sm 3xl:text-lg font-medium text-gray-700">Domain</label>
                             <Select value={domain} onValueChange={setDomain}>
                                 <SelectTrigger className="w-full 3xl:p-4 3xl:text-lg">
-                                    <SelectValue placeholder="Select a domain (optional)" />
+                                    <SelectValue placeholder="Select a domain" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Fullstack" className="3xl:text-lg">Fullstack</SelectItem>
@@ -158,12 +150,12 @@ export const Resume = () => {
                         <div className="space-y-1">
                             <label htmlFor="description" className="block text-sm 3xl:text-lg font-medium text-gray-700">Full Resume Content</label>
                             <div className="mt-1">
-                                <Textarea id="description" rows={12} required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Paste your professional history or full resume here..." className="mt-1 3xl:p-4 3xl:text-lg" />
+                                <Textarea id="description" required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Paste your professional history or full resume here..." className="mt-1 3xl:p-4 3xl:text-lg h-38 lg:h-48" />
                             </div>
                         </div>
 
                         <div className="space-y-1">
-                            <button type="submit" disabled={loading || !role.trim() || !description.trim()} className={`w-full flex justify-center py-2 px-4 3xl:py-4 3xl:px-8 border border-transparent rounded-md shadow-sm text-sm 3xl:text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 ${(loading || !role.trim() || !description.trim()) ? 'opacity-75 cursor-not-allowed bg-indigo-400 hover:bg-indigo-400' : ''}`}>
+                            <button type="submit" disabled={loading || !role.trim() || !description.trim() || !domain} className={`w-full flex justify-center py-2 px-4 3xl:py-4 3xl:px-8 border border-transparent rounded-md shadow-sm text-sm 3xl:text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 ${(loading || !role.trim() || !description.trim() || !domain) ? 'opacity-75 cursor-not-allowed bg-indigo-400 hover:bg-indigo-400' : ''}`}>
                                 {loading ? 'Processing...' : 'Upload and Index'}
                             </button>
                         </div>
@@ -209,24 +201,7 @@ export const Resume = () => {
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="flex flex-wrap items-center gap-2 min-w-0">
                                                     <p className="text-sm 3xl:text-xl font-bold text-indigo-600 truncate">{resume.role}</p>
-                                                    {user?.role === 'SUPER_ADMIN' ? (
-                                                        <div onClick={(e) => e.stopPropagation()}>
-                                                            <Select
-                                                                value={resume.domain || ''}
-                                                                onValueChange={(val) => handleUpdateDomain(resume.id, val)}
-                                                            >
-                                                                <SelectTrigger className="h-7 3xl:h-10 w-[110px] 3xl:w-[150px] text-xs 3xl:text-base bg-gray-50 border-gray-200">
-                                                                    <SelectValue placeholder="Domain" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    <SelectItem value="Fullstack">Fullstack</SelectItem>
-                                                                    <SelectItem value="GenAI">GenAI</SelectItem>
-                                                                    <SelectItem value="DevOps">DevOps</SelectItem>
-                                                                    <SelectItem value="AI/ML">AI/ML</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                        </div>
-                                                    ) : resume.domain && (
+                                                    {resume.domain && (
                                                         <span className="inline-flex items-center px-2.5 py-0.5 3xl:px-4 3xl:py-1 rounded-full text-xs 3xl:text-sm font-medium bg-blue-100 text-blue-800">
                                                             {resume.domain}
                                                         </span>
