@@ -37,39 +37,36 @@ app.post('/resume/generate', async (c) => {
         const gemini = new GeminiClient(apiKey);
         console.log(`DEBUG: Processing resume for role: ${role}`);
 
-        // PURE CHUNKING: No AI or Template construction
+        // PURE CHUNKING REMOVED: Store full content in one go
         const resumeContent = description;
 
         const sql = neon(dbUrl);
         const db = drizzle(sql);
 
-        const chunks = resumeContent.match(/[\s\S]{1,2000}/g) || [resumeContent];
+        // Limit embedding input to avoid model errors, but store FULL content
+        const embeddingInput = resumeContent.slice(0, 9000);
         const mainId = crypto.randomUUID();
 
-        console.log(`DEBUG: Processing ${chunks.length} chunks for embedding`);
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-            console.log(`DEBUG: Generating embedding for chunk ${i + 1}/${chunks.length}`);
-            const embedding = await gemini.generateEmbedding(chunk);
-            console.log(`DEBUG: Embedding generated (${embedding.length} dims)`);
+        console.log(`DEBUG: Generating embedding for resume (${resumeContent.length} chars)`);
+        const embedding = await gemini.generateEmbedding(embeddingInput);
+        console.log(`DEBUG: Embedding generated (${embedding.length} dims)`);
 
-            console.log(`DEBUG: Inserting chunk ${i + 1} into DB`);
-            await db.insert(resumes).values({
-                id: i === 0 ? mainId : crypto.randomUUID(),
-                userId,
-                domain: targetDomain,
-                role,
-                description: description.substring(0, 100), // Store snippet for display
-                contentChunk: chunk,
-                embedding,
-                metadata: {
-                    type: 'manual_chunked',
-                    parentId: i === 0 ? null : mainId,
-                    sequence: i
-                }
-            });
-        }
-        console.log("DEBUG: All chunks inserted successfully");
+        console.log(`DEBUG: Inserting resume into DB`);
+        await db.insert(resumes).values({
+            id: mainId,
+            userId,
+            domain: targetDomain,
+            role,
+            description: description.substring(0, 100), // Store snippet for display
+            contentChunk: resumeContent, // STORE FULL CONTENT
+            embedding,
+            metadata: {
+                type: 'manual_full',
+                originalLength: resumeContent.length
+            }
+        });
+
+        console.log("DEBUG: Resume inserted successfully");
 
         return c.json({ id: mainId, role, domain: targetDomain, success: true });
 
@@ -97,31 +94,28 @@ app.post('/resumes', async (c) => {
     const gemini = new GeminiClient(apiKey);
 
     try {
-        const chunks = content.match(/[\s\S]{1,2000}/g) || [content];
         const mainId = crypto.randomUUID();
 
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-            const embedding = await gemini.generateEmbedding(chunk);
+        // Limit embedding input
+        const embeddingInput = content.slice(0, 9000);
+        const embedding = await gemini.generateEmbedding(embeddingInput);
 
-            await db.insert(resumes).values({
-                id: i === 0 ? mainId : crypto.randomUUID(),
-                userId,
-                domain,
-                role: role || 'Manual Upload',
-                description: description || 'No description provided',
-                contentChunk: chunk,
-                embedding,
-                metadata: {
-                    ...(metadata || {}),
-                    type: 'manual',
-                    parentId: i === 0 ? null : mainId,
-                    sequence: i
-                }
-            });
-        }
+        await db.insert(resumes).values({
+            id: mainId,
+            userId,
+            domain,
+            role: role || 'Manual Upload',
+            description: description || 'No description provided',
+            contentChunk: content, // STORE FULL CONTENT
+            embedding,
+            metadata: {
+                ...(metadata || {}),
+                type: 'manual_full',
+                originalLength: content.length
+            }
+        });
 
-        return c.json({ success: true, count: chunks.length, id: mainId });
+        return c.json({ success: true, count: 1, id: mainId });
     } catch (e: any) {
         return c.json({ error: e.message }, 500);
     }

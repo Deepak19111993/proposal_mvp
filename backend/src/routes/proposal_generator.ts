@@ -146,10 +146,10 @@ app.post('/', async (c) => {
         const resumesContext = resumes.map((r: any) => `DOMAIN: ${r.domain}\nCONTENT: ${r.content}`).join('\n\n---\n\n');
 
         // Dynamic Persona based on Domain -> Now focused on WRITING the proposal
-        let expertPersona = "Elite Proposal Writer & Career Strategist";
+        let expertPersona = "Expert Upwork Freelancer & Strategic Partner";
 
         const systemPrompt = `You are an ${expertPersona}.
-        Your TASK is to write a highly professional, persuasive, and custom tailored cover letter/proposal ON BEHALF OF the user for a specific job.
+        Your TASK is to write a high-converting, practical, and solution-focused Upwork proposal ON BEHALF OF the user.
 
         ### USER'S RESUME (Your Identity):
         ${resumesContext}
@@ -172,36 +172,52 @@ app.post('/', async (c) => {
            - **Good Match (75-89)**: Minor skill gaps but strong core alignment.
            - **Average Match (60-74)**: Missing some key requirements but adaptable.
            - **Weak Match (<60)**: Significant gaps.
+           - **CRITICAL**: Do NOT dock points for "missing" enterprise tech (Kubernetes, AWS) if the job is small/simple (e.g., "Fix my VPS"). Context matters!
 
         3. **PROPOSAL GENERATION (The Output)**:
            - **VOICE**: Write in the **FIRST PERSON ("I")**. You ARE the candidate.
-           - **TONE**: Professional, confident, concise, and solution-oriented.
+           - **TONE**: **Conversational, Direct, Competent, Low-Ego.** Avoid "Corporate Speak".
+             - ❌ Bad: "I utilize a synergistic approach to leverage cloud-native paradigms."
+             - ✅ Good: "I can fix your VPS script issues in about 2 hours using a cleaner bash script."
            - **STRUCTURE**:
-             - **Hook**: Immediately address the client's specific need/problem.
-             - **Value**: detailed how your specific past experience (from resume) solves their problem.
-             - **Call to Action**: A confident closing inviting discussion.
+             - **Hook**: Address the specific problem immediately. No "I am writing to apply..." fluff.
+             - **Structure**:
+               - **Greeting**: MANDATORY: Start with a simple "Hi," or "Hello,".
+               - **Body**: Explain briefly *how* you will solve their problem using your specific skills.
+               - **Proof**: Mention 1-2 relevant past projects/skills from your resume that prove you can do *this specific* job.
+               - **Closing**: A confident closing inviting discussion (e.g., "Ready to start immediately. Let's chat?").
+               - **Sign-off**: MANDATORY: End with "Best," or "Regards," followed by your name or a placeholder if unknown.
            - **ABSOLUTE PROHIBITIONS**:
              - ❌ NEVER say "Based on your resume" or "Reviewing your profile".
-             - ❌ NEVER say "I am a strong candidate for..." as an opener. Be more creative.
+             - ❌ NEVER say "I am a strong candidate for..." as an opener. Be creative.
              - ❌ NEVER mention "fit score" or internal logic in the proposal text.
              - ❌ Do NOT include placeholders like "[Your Name]".
-           - **LENGTH**: roughly 200-300 words. Short and punchy.
-
-        4. **OUTPUT FORMAT**:
-           Return ONLY a valid JSON object:
-           {
-             "fitscore": number, // 0-100
-             "proposal": "string", // The professional cover letter text (markdown allowed)
-             "requirementMatrix": [ // Array of objects
-               { "requirement": "Job Requirement", "match": "Your specific matching skill/experience" }
-               // ... map key requirements to user skills
-             ],
-             "clarifyingQuestions": [ // Array of strings
-               "Question 1",
-               "Question 2",
-               "Question 3"
-             ]
-           }`;
+             - ❌ Do NOT suggest Enterprise solutions (K8s, Microservices) for small/medium tasks.
+           - **HANDLING MISSING SKILLS**:
+             - If the job requires a skill you don't have (based on the resume), **address it honestly**. 
+             - Say you're happy to learn it, or ask if it's a hard requirement. 
+             - **Do not lie** about having a skill you don't list.
+          - **LENGTH**: Short and punchy (100-200 words max for most jobs).
+            - **CLARIFYING QUESTIONS**:
+              - **When to ask**: Only if critical information is missing that would prevent you from starting work.
+                - ✅ Example: Job mentions "integrate with our API" but no API documentation or endpoint provided.
+                - ✅ Example: "Deploy to our server" but no server details or access information.
+                - ✅ Example: Job requires specific tech/framework not mentioned in job description.
+              - **When NOT to ask**: 
+                - ❌ Don't ask about preferences that can be discussed later (e.g., "What color scheme?").
+                - ❌ Don't ask about standard details you should already know (e.g., "What is React?").
+                - ❌ Don't ask if the job description is already clear and complete.
+              - **Format**: Keep questions brief and specific (2-3 max).
+         4. **OUTPUT FORMAT**:
+            Return ONLY a valid JSON object:
+            {
+              "fitscore": number, // 0-100
+              "proposal": "string", // The proposal text (markdown allowed)
+              "requirementMatrix": "string", // Bullet points showing: Skill Name (✅ Yes / 📚 Learning / ❌ No)
+              "clarifyingQuestions": [ // Array - include ONLY if critical info is missing to start work
+                "Question 1"
+              ]
+            }`;
 
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
             method: 'POST',
@@ -219,70 +235,115 @@ app.post('/', async (c) => {
         if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
             const rawText = data.candidates[0].content.parts[0].text;
 
+            const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
             try {
-                const parsed = JSON.parse(rawText);
+                const parsed = JSON.parse(cleanText);
                 fitscore = typeof parsed.fitscore === 'number' ? parsed.fitscore : 0;
 
                 let chunks = [];
-                if (parsed.proposal) chunks.push(parsed.proposal);
+                let proposalText = parsed.proposal || "";
+                console.log("===== PROPOSAL GENERATION DEBUG =====");
+                console.log("RAW PROPOSAL FROM GEMINI:", proposalText.substring(0, 100));
+
+                // Safety: Remove Requirement Matrix if it leaked into the proposal text
+                if (proposalText.match(/##?\s*Requirement Matrix/i)) {
+                    proposalText = proposalText.split(/##?\s*Requirement Matrix/i)[0].trim();
+                }
+
+                // Force Greeting
+                console.log("BEFORE GREETING CHECK:", proposalText.substring(0, 50));
+                if (!proposalText.match(/^\s*(Hi|Hello|Dear)\b/i)) {
+                    console.log("NO GREETING FOUND - ADDING");
+                    proposalText = "Hi,\n\n" + proposalText;
+                } else {
+                    console.log("GREETING ALREADY EXISTS");
+                }
+
+                // Note: Strip any AI-generated sign-off from here so we can add it at the very end
+                // This removes "Best, Deepak" etc. from the middle of the document
+                proposalText = proposalText.replace(/(Best|Regards|Sincerely|Thanks|Cheers)[,\s]*[\n]*([A-Za-z\s]+)?$/gi, '').trim();
+
+                if (proposalText) chunks.push(proposalText);
 
                 const matrix = parsed.requirementMatrix;
-                if (matrix && (typeof matrix === 'string' && matrix.trim() || Array.isArray(matrix))) {
-                    let formattedMatrix = '';
-                    if (Array.isArray(matrix)) {
-                        formattedMatrix = matrix.map((item: any) => {
-                            if (typeof item === 'string') return item;
-                            if (typeof item === 'object' && item !== null) {
-                                // Handle { requirement: "...", match: "..." } pattern
-                                if (item.requirement && item.match) return `- **${item.requirement}**: ${item.match}`;
-                                if (item.requirementName && item.match) return `- **${item.requirementName}**: ${item.match}`;
-                                if (item.requirementName) return `- ${item.requirementName}`; // Handle case with no match value
-                                if (item.skill && item.level) return `- **${item.skill}**: ${item.level}`;
-
-                                // Fallback: Convert first key-value pair to string: "- Key: Value"
-                                const entries = Object.entries(item);
-                                if (entries.length > 0) {
-                                    return `- **${entries[0][0]}**: ${entries[0][1]}`;
-                                }
-                            }
-                            return JSON.stringify(item);
-                        }).join('\n');
-                    } else {
-                        formattedMatrix = matrix;
-                    }
-                    chunks.push('## Requirement Matrix\n' + formattedMatrix);
+                if (matrix && typeof matrix === 'string' && matrix.trim()) {
+                    chunks.push('## Requirement Matrix\n' + matrix);
                 }
 
                 const questions = parsed.clarifyingQuestions;
                 if (questions && (typeof questions === 'string' && questions.trim() || Array.isArray(questions))) {
                     let formattedQuestions = '';
-                    if (Array.isArray(questions)) {
+                    if (Array.isArray(questions) && questions.length > 0) {
                         formattedQuestions = questions.map((q: any) => {
                             if (typeof q === 'string') return `- ${q}`;
                             if (typeof q === 'object' && q !== null) {
-                                // Handle { question: "...", context: "..." } or simple key-value
                                 if (q.question) return `- ${q.question}`;
                                 const entries = Object.entries(q);
                                 if (entries.length > 0) return `- ${entries[0][1]}`;
                             }
                             return `- ${JSON.stringify(q)}`;
                         }).join('\n');
-                    } else {
+                        chunks.push('## Clarifying Questions (Optional)\n' + formattedQuestions);
+                    } else if (typeof questions === 'string') {
                         formattedQuestions = questions;
+                        chunks.push('## Clarifying Questions\n' + formattedQuestions);
                     }
-                    chunks.push('## Clarifying Questions\n' + formattedQuestions);
                 }
 
                 answer = chunks.join('\n\n');
+                console.log("FINAL ANSWER (first 150 chars):", answer.substring(0, 150));
+                console.log("FINAL ANSWER (last 150 chars):", answer.slice(-150));
+                console.log("===== END DEBUG =====");
             } catch (e) {
                 console.error("Failed to parse JSON response:", rawText);
-                answer = rawText;
+                // Fallback: If parsing fails, try to strip the matrix manually if present
+                const fallbackText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+                if (fallbackText.match(/##?\s*Requirement Matrix/i)) {
+                    answer = fallbackText.split(/##?\s*Requirement Matrix/i)[0].trim();
+                } else {
+                    answer = fallbackText;
+                }
+
+                // Force Greeting (Fallback)
+                if (!answer.match(/^\s*(Hi|Hello|Dear)\b/i)) {
+                    answer = "Hi,\n\n" + answer;
+                }
+
+                // Force Sign-off (Fallback) - Check last 100 chars
+                if (!answer.match(/(Best|Regards|Sincerely|Thanks|Cheers)(?:,|!)?[\s\S]{0,100}$/i)) {
+                    answer = answer.trim() + "\n\nBest,\n[Your Name]";
+                }
             }
         } else if (data.error) {
             answer = `API Error: ${data.error.message}`;
         }
     } catch (e: any) {
         answer = `Application Error: ${e.message}`;
+    }
+
+    // FINAL ENFORCEMENT: Ensure greeting and sign-off are present
+    // This runs AFTER all other logic, guaranteeing these elements are added
+    if (answer && !answer.match(/API Error|Application Error|Domain Mismatch|No Resumes Found/)) {
+        // Force Greeting if missing
+        if (!answer.match(/^\s*(Hi|Hello|Dear)\b/i)) {
+            answer = "Hi,\n\n" + answer;
+        }
+
+        // FINAL ENFORCEMENT: Ensure greeting is present
+        // Add sign-off at the very end (after Questions)
+
+        // Remove any premature sign-offs (Best, Regards, etc.) that appear before the end
+        // This regex finds sign-offs followed by content (not at the end)
+        answer = answer.replace(/(Best|Regards|Sincerely|Thanks|Cheers),?\s*\n+(?=[\s\S])/gi, '');
+
+        // Ensure "Best,\n[Your Name]" is at the very end
+        // First remove any existing end-of-text sign-off to avoid duplicates
+        answer = answer.replace(/(Best|Regards|Sincerely|Thanks|Cheers)[,\s]*[\n]*([A-Za-z\s\[\]]+)?$/gi, '').trim();
+
+        // Add the clean sign-off
+        answer = answer + "\n\nBest,\n[Your Name]";
     }
 
     // Save to history scoped by userId
