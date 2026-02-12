@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // Added useRef
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useLoading } from './context/LoadingContext';
@@ -11,6 +11,10 @@ export const Layout = () => {
     const { logout, user, token } = useAuth();
     const { loading } = useLoading();
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+    // Refs for sliding underline
+    const tabsRef = useRef<(HTMLAnchorElement | null)[]>([]);
+    const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
 
     useEffect(() => {
         const handler = (e: any) => {
@@ -28,13 +32,38 @@ export const Layout = () => {
         console.log(`User response to the install prompt: ${outcome}`);
         setDeferredPrompt(null);
     };
-    // Modal logic removed as it's moved to AdminUsers page
 
     const isActive = (path: string) => {
         if (path === '/' && location.pathname === '/') return true;
         if (path !== '/' && location.pathname.startsWith(path)) return true;
         return false;
     };
+
+    // Construct navigation links dynamically
+    const navLinks = [
+        ...(user?.role !== 'SUPER_ADMIN' ? [
+            { name: 'Chat', path: '/' },
+            { name: 'History', path: '/history' },
+        ] : []),
+        { name: 'Resume', path: '/resume' },
+        ...(user?.role === 'SUPER_ADMIN' ? [
+            { name: 'Users', path: '/users' },
+        ] : [])
+    ];
+
+    useEffect(() => {
+        // Find active index
+        const activeIndex = navLinks.findIndex(link => isActive(link.path));
+        const activeTab = tabsRef.current[activeIndex];
+
+        if (activeTab) {
+            setIndicatorStyle({
+                left: activeTab.offsetLeft,
+                width: activeTab.offsetWidth
+            });
+        }
+    }, [location.pathname, navLinks.length]); // dependency on navLinks structure change (login/logout)
+
 
     const getLinkClass = (path: string, mobile = false) => {
         const active = isActive(path);
@@ -43,9 +72,8 @@ export const Layout = () => {
                 ? "bg-indigo-50 border-indigo-500 text-indigo-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
                 : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium";
         }
-        return active
-            ? "border-indigo-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-            : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium";
+        // Desktop: remove static border-b-2
+        return `inline-flex items-center px-1 text-sm font-medium hover:text-gray-700 ${active ? 'text-gray-900' : 'text-gray-500'}`;
     };
 
     return (
@@ -58,33 +86,14 @@ export const Layout = () => {
             <nav className="bg-white shadow sticky top-0 z-40">
                 <div className="max-w-[1600px] 3xl:max-w-[2400px] mx-auto px-[10px] sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
-                        <div className="flex">
-                            <div className="flex-shrink-0 flex items-center">
-                                <Link to="/">
-                                    <Logo />
-                                </Link>
-                            </div>
-                            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                                {user?.role !== 'SUPER_ADMIN' && (
-                                    <>
-                                        <Link to="/" className={getLinkClass('/')}>
-                                            Chat
-                                        </Link>
-                                        <Link to="/history" className={getLinkClass('/history')}>
-                                            History
-                                        </Link>
-                                    </>
-                                )}
-                                <Link to="/resume" className={getLinkClass('/resume')}>
-                                    Resume
-                                </Link>
-                                {user?.role === 'SUPER_ADMIN' && (
-                                    <Link to="/users" className={getLinkClass('/users')}>
-                                        Users
-                                    </Link>
-                                )}
-                            </div>
+                        {/* Logo */}
+                        <div className="flex-shrink-0 flex items-center">
+                            <Link to="/">
+                                <Logo />
+                            </Link>
                         </div>
+
+                        {/* Mobile Menu Button */}
                         <div className="flex items-center sm:hidden">
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -98,20 +107,42 @@ export const Layout = () => {
                                 )}
                             </button>
                         </div>
-                        <div className="hidden sm:flex sm:items-center">
-                            <span className="text-sm text-gray-500 mr-4 flex items-center">
-                                {token && !user ? (
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
-                                ) : (
-                                    user?.name || user?.email
-                                )}
-                            </span>
-                            <button
-                                onClick={logout}
-                                className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-                            >
-                                Log out
-                            </button>
+
+                        {/* Right Side: Links & User Profile */}
+                        <div className="hidden sm:flex sm:space-x-8 h-full">
+                            <div className="flex space-x-8 relative h-full">
+                                {navLinks.map((link, idx) => (
+                                    <Link
+                                        key={link.path}
+                                        to={link.path}
+                                        ref={(el) => { tabsRef.current[idx] = el; }}
+                                        className={getLinkClass(link.path)}
+                                    >
+                                        {link.name}
+                                    </Link>
+                                ))}
+                                {/* Sliding Underline */}
+                                <span
+                                    className="absolute bottom-0 h-0.5 bg-indigo-500 transition-all duration-300 ease-in-out"
+                                    style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+                                />
+                            </div>
+
+                            <div className="flex items-center">
+                                <span className="text-sm text-gray-500 flex items-center">
+                                    {token && !user ? (
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+                                    ) : (
+                                        user?.name || user?.email
+                                    )}
+                                </span>
+                                <button
+                                    onClick={logout}
+                                    className="ml-4 px-3 py-2 rounded-md text-sm font-medium text-indigo-600 hover:text-indigo-500 hover:bg-indigo-50 transition-colors"
+                                >
+                                    Log out
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -191,16 +222,16 @@ export const Layout = () => {
                                         Install App
                                     </button>
                                 )}
+                                <button
+                                    onClick={() => {
+                                        setIsMobileMenuOpen(false);
+                                        logout();
+                                    }}
+                                    className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
+                                >
+                                    Log out
+                                </button>
                             </div>
-                            <button
-                                onClick={() => {
-                                    setIsMobileMenuOpen(false);
-                                    logout();
-                                }}
-                                className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors"
-                            >
-                                Log out
-                            </button>
                         </div>
                     </div>
                 </div>

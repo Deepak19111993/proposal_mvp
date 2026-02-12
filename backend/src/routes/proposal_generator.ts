@@ -50,6 +50,7 @@ app.post('/', async (c) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    temperature: 0,
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: { response_mime_type: "application/json" }
                 })
@@ -197,7 +198,7 @@ app.post('/', async (c) => {
              - If the job requires a skill you don't have (based on the resume), **address it honestly**. 
              - Say you're happy to learn it, or ask if it's a hard requirement. 
              - **Do not lie** about having a skill you don't list.
-          - **LENGTH**: Short and punchy (100-200 words max for most jobs).
+           - **LENGTH**: approximately 500-600 words. Detailed and comprehensive while staying relevant.
             - **CLARIFYING QUESTIONS**:
               - **When to ask**: Only if critical information is missing that would prevent you from starting work.
                 - ✅ Example: Job mentions "integrate with our API" but no API documentation or endpoint provided.
@@ -213,7 +214,7 @@ app.post('/', async (c) => {
             {
               "fitscore": number, // 0-100
               "proposal": "string", // The proposal text (markdown allowed)
-              "requirementMatrix": "string", // Bullet points showing: Skill Name (✅ Yes / 📚 Learning / ❌ No)
+              "requirementMatrix": "string", // Bullet points
               "clarifyingQuestions": [ // Array - include ONLY if critical info is missing to start work
                 "Question 1"
               ]
@@ -225,6 +226,7 @@ app.post('/', async (c) => {
             body: JSON.stringify({
                 contents: [{ parts: [{ text: systemPrompt }] }],
                 generationConfig: {
+                    temperature: 0,
                     response_mime_type: "application/json"
                 }
             })
@@ -261,14 +263,17 @@ app.post('/', async (c) => {
                 }
 
                 // Note: Strip any AI-generated sign-off from here so we can add it at the very end
-                // This removes "Best, Deepak" etc. from the middle of the document
-                proposalText = proposalText.replace(/(Best|Regards|Sincerely|Thanks|Cheers)[,\s]*[\n]*([A-Za-z\s]+)?$/gi, '').trim();
+                // This removes "Best, Deepak", "[Your Name]", or just "Best" from the middle
+                proposalText = proposalText.replace(/(Best|Regards|Sincerely|Thanks|Cheers|Warmly|Yours)[,\s]*[\n]*([A-Za-z\s\[\]]+)?$/gi, '').trim();
+
+                // Also specific catch for just [Your Name] at the end
+                proposalText = proposalText.replace(/\[Your Name\]$/i, '').trim();
 
                 if (proposalText) chunks.push(proposalText);
 
                 const matrix = parsed.requirementMatrix;
                 if (matrix && typeof matrix === 'string' && matrix.trim()) {
-                    chunks.push('## Requirement Matrix\n' + matrix);
+                    chunks.push(`### Requirement Matrix\n\n${matrix}`);
                 }
 
                 const questions = parsed.clarifyingQuestions;
@@ -284,10 +289,10 @@ app.post('/', async (c) => {
                             }
                             return `- ${JSON.stringify(q)}`;
                         }).join('\n');
-                        chunks.push('## Clarifying Questions (Optional)\n' + formattedQuestions);
+                        chunks.push(`### Clarifying Questions\n\n${formattedQuestions}`);
                     } else if (typeof questions === 'string') {
                         formattedQuestions = questions;
-                        chunks.push('## Clarifying Questions\n' + formattedQuestions);
+                        chunks.push(`### Clarifying Questions\n\n${formattedQuestions}`);
                     }
                 }
 

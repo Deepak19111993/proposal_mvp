@@ -84,13 +84,13 @@ export const History = () => {
 
     return (
         <div className="space-y-8 3xl:space-y-12">
-            <div className="md:flex md:items-center md:justify-between">
+            <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                     <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl 3xl:text-5xl sm:truncate">
                         Proposal History
                     </h2>
                 </div>
-                <div className="mt-4 flex md:mt-0 md:ml-4">
+                <div className="flex ml-4">
                     <Link
                         to="/"
                         className="flex justify-center py-2 px-4 3xl:py-4 3xl:px-8 border border-transparent rounded-md shadow-sm text-sm 3xl:text-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"

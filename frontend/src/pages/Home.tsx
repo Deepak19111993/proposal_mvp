@@ -11,10 +11,11 @@ export const Home = () => {
     const [question, setQuestion] = useState('');
 
     const [result, setResult] = useState<{ answer: string, question: string, fitscore?: number } | null>(null);
-    const { startLoading, stopLoading, loading } = useLoading();
+    const { startLoading, stopLoading } = useLoading(); // Global loader (for top bar)
     const { user } = useAuth();
     const navigate = useNavigate();
     const [loadingStatus, setLoadingStatus] = useState("AI is analysing...");
+    const [isGenerating, setIsGenerating] = useState(false); // Local loader (for main content)
 
     useEffect(() => {
         if (user?.role === 'SUPER_ADMIN') {
@@ -24,7 +25,7 @@ export const Home = () => {
 
     useEffect(() => {
         let interval: ReturnType<typeof setInterval>;
-        if (loading) {
+        if (isGenerating) {
             setLoadingStatus("Validating domain match...");
             let step = 0;
             const steps = [
@@ -43,11 +44,12 @@ export const Home = () => {
             }, 2500);
         }
         return () => clearInterval(interval);
-    }, [loading]);
+    }, [isGenerating]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         startLoading();
+        setIsGenerating(true);
         setResult(null);
         try {
             const reqBody = { question };
@@ -59,6 +61,7 @@ export const Home = () => {
             console.error(error);
             setResult({ question, answer: error.message || 'Error connecting to server.' });
         }
+        setIsGenerating(false);
         stopLoading();
     };
 
@@ -68,8 +71,8 @@ export const Home = () => {
         return 'text-red-600 bg-red-100 ring-red-500/20';
     };
 
-    const isSubmitDisabled = loading || !question.trim();
-    const hasStarted = loading || result !== null;
+    const isSubmitDisabled = isGenerating || !question.trim();
+    const hasStarted = isGenerating || result !== null;
 
     return (
         <div className="max-w-[900px] 3xl:max-w-[1400px] mx-auto flex flex-col gap-8 3xl:gap-16 items-start transition-all duration-700 ease-in-out">
@@ -99,7 +102,7 @@ export const Home = () => {
                                     placeholder="E.g., I need a mobile app for a food delivery service... (Copy-paste the full job description)"
                                     value={question}
                                     onChange={(e) => setQuestion(e.target.value)}
-                                    disabled={loading}
+                                    disabled={isGenerating}
                                 />
                             </div>
                         </div>
@@ -110,7 +113,7 @@ export const Home = () => {
                                 disabled={isSubmitDisabled}
                                 className={`w-full flex justify-center py-2 px-4 3xl:py-4 3xl:px-8 border border-transparent rounded-md shadow-sm text-sm 3xl:text-xl font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 ${isSubmitDisabled ? 'opacity-75 cursor-not-allowed bg-indigo-400 hover:bg-indigo-400' : ''}`}
                             >
-                                {loading ? 'Generating Proposal...' : 'Generate Proposal'}
+                                {isGenerating ? 'Generating Proposal...' : 'Generate Proposal'}
                             </button>
                         </div>
                     </form>
@@ -120,7 +123,7 @@ export const Home = () => {
             {/* Output Area */}
             {hasStarted && (
                 <div className="w-full animate-in fade-in slide-in-from-bottom-8 duration-1000 fill-mode-forwards">
-                    {loading && !result && (
+                    {isGenerating && !result && (
                         <div className="space-y-6">
                             <AIAnalysisLoader status={loadingStatus} />
                         </div>

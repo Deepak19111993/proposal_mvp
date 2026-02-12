@@ -1,1 +1,32 @@
+# Dependencies
+node_modules/
+
+# Production
+dist/
+build/
+
+# Logs
+logs.txt
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Vercel
 .vercel
+
+# Temporary/Cache
+.wrangler/
+.drizzle/
+./helpers/
+
+# Local Helpers (Optional - Uncomment if you want to ignore them)
+# helpers/

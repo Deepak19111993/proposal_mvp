@@ -92,11 +92,11 @@ export const HistoryDetail = () => {
 
     return (
         <div className="space-y-6 3xl:space-y-10">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl 3xl:text-5xl">
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4">
+                <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl 3xl:text-5xl self-start sm:self-auto">
                     Proposal Details
                 </h2>
-                <Link to="/history" className="text-indigo-600 hover:text-indigo-900 font-medium inline-flex items-center 3xl:text-xl">
+                <Link to="/history" className="text-indigo-600 hover:text-indigo-900 font-medium inline-flex items-center 3xl:text-xl self-start sm:self-auto">
                     <BackArrowIcon className="w-4 h-4 3xl:w-6 3xl:h-6 mr-1" />
                     Back to History
                 </Link>

@@ -32,6 +32,7 @@ export class GeminiClient {
         let body: any = {
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
+                temperature: 0,
                 ...config.generationConfig
             }
         };

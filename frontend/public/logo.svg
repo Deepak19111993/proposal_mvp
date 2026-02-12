@@ -1,0 +1,41 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Fill -->
+  <circle cx="50" cy="50" r="50" fill="#4f39f6" />
+
+  <!-- Inner Ring -->
+  <circle
+      cx="50"
+      cy="50"
+      r="35"
+      stroke="url(#gradient-inner)"
+      stroke-width="4"
+      stroke-dasharray="160"
+      stroke-dashoffset="40"
+      stroke-linecap="round"
+      fill="transparent"
+      opacity="0.8"
+  />
+
+  <!-- Eye Shape -->
+  <path
+      d="M50 35C35 35 25 50 25 50C25 50 35 65 50 65C65 65 75 50 75 50C75 50 65 35 50 35Z"
+      fill="white"
+      stroke="url(#gradient-core)"
+      stroke-width="2"
+  />
+
+  <!-- Pupil -->
+  <circle cx="50" cy="50" r="8" fill="url(#gradient-core)" />
+
+  <!-- Definitions -->
+  <defs>
+      <linearGradient id="gradient-inner" x1="100%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#bdbdbd" />
+          <stop offset="100%" stop-color="#4f39f6" />
+      </linearGradient>
+      <linearGradient id="gradient-core" x1="50%" y1="35%" x2="50%" y2="65%">
+          <stop offset="0%" stop-color="#000" />
+          <stop offset="100%" stop-color="#925ec2" />
+      </linearGradient>
+  </defs>
+</svg>

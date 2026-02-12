@@ -1,6 +1,26 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@layer base {
+
+    button,
+    button[role="button"],
+    button[type="button"],
+    button[type="submit"],
+    button[type="reset"],
+    button[type="menu"],
+    button[type="checkbox"],
+    button[type="radio"] {
+        cursor: pointer !important;
+    }
+
+    button:disabled,
+    button[role="button"][aria-disabled="true"] {
+        cursor: not-allowed !important;
+        opacity: 0.6;
+    }
+}
+
 @layer utilities {
     @keyframes loading-bar {
         0% {
